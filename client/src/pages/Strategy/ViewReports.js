@@ -37,26 +37,16 @@ import HomeIcon from "@mui/icons-material/Home";
 
 import { CartesianGrid, Legend, Line, LineChart, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 
-const accentColor = "#1fdb25";
+import {
+  accentColor,
+  blueTeamColor,
+  redTeamColor,
+  GROUP_COLORS,
+  calculatedMetrics,
+  importantMetrics,
+  visibleMetrics
+} from "./Config";
 
-const blueTeamColor = "#3ad5fc";
-const redTeamColor = "#fa1919";
-
-// ================================
-// CONFIG: group colors
-// ================================
-const GROUP_COLORS = {
-  fuel: "#fcec4e",
-  controlPanel: "#00B4D8",
-  hang: "#e06bfa",
-  defense: "#FCA311",
-  contact: "#FCA311",
-  movement: "#00B4D8"
-};
-
-// ================================
-// UTILS
-// ================================
 const camelCaseToWords = (str) => {
   const result = str.replace(/([A-Z])/g, " $1");
   return result.charAt(0).toUpperCase() + result.slice(1);
@@ -80,6 +70,8 @@ const formatValue = (value, key, roundingCount) => {
 const ViewReportGraphs = ({ data, headingColors }) => {
   const [selectedPhase, setSelectedPhase] = useState("tele");
 
+  console.log("alldata123", data);
+
   const getAvailableMetrics = () => {
     if (!data?.reports?.[0]?.totals?.[selectedPhase]) {
       return [];
@@ -96,18 +88,20 @@ const ViewReportGraphs = ({ data, headingColors }) => {
     }
   }, [selectedPhase, data]);
 
-
   const MetricsChart = ({ data, title }) => {
+    console.log("data123", data);
     let newData = [];
     const maxReportsCount = Math.max(...Object.values(data).map(arr => arr.length));
 
     for (let i = 0; i < maxReportsCount; i++) {
       let nextElement = { name: `Report ${i + 1}` };
       for (const key in data) {
-        nextElement[key] = data[key][i] || 0;
+        const val = data[key][i];
+        nextElement[key] = val ? (calculatedMetrics[selectedMetric][title] ? calculatedMetrics[selectedMetric][title](val) : val[title]) : 0;
       }
       newData.push(nextElement);
     }
+    console.log("data123 new", newData);
 
 
     const colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#FFA500", "#800080", "#008000", "#000080"];
@@ -147,7 +141,7 @@ const ViewReportGraphs = ({ data, headingColors }) => {
   }
 
   const availableMetrics = getAvailableMetrics();
-  const submetrics = selectedMetric ? Object.keys(data.reports[0].totals[selectedPhase][selectedMetric] || {}) : [];
+  const submetrics = (selectedPhase && selectedMetric) ? visibleMetrics[selectedPhase][selectedMetric] : [];
   return (
     <Paper sx={{ bgcolor: "#111", margin: "2%", width: "96%", padding: "2vh 2vw", boxShadow: `0px 0px 10px #aaa` }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 4 }}>
@@ -190,11 +184,10 @@ const ViewReportGraphs = ({ data, headingColors }) => {
             if (!allData[report.robot]) {
               allData[report.robot] = [];
             }
-            const value = report.totals[selectedPhase]?.[selectedMetric]?.[submetricName];
+            const value = report.totals[selectedPhase]?.[selectedMetric];
             allData[report.robot].push(Array.isArray(value) ? value[0] : value);
           });
-          console.log("allData", allData);
-          return <MetricsChart key={submetricName} data={allData} title={submetricName} />;
+          return (visibleMetrics[selectedPhase][selectedMetric].includes(submetricName) && <MetricsChart key={submetricName} data={allData} title={submetricName} />);
         })}
       </Box>
     </Paper>
@@ -218,27 +211,35 @@ const ViewIndividualReports = ({ reports, headingColors }) => {
 
     if (!data) return null;
 
+    const dataKeys = visibleMetrics[selectedPhase][metric];
+
     return (
-      <Table size="small" sx={{ ...sx, mt: 1 }}>
-        <TableHead>
-          <TableRow>
-            {Object.keys(data).map(categoryKey => (
-              <TableCell key={categoryKey} sx={{ color: GROUP_COLORS[metric] || '#fff', backgroundColor: "#444", border: `2px solid ${GROUP_COLORS[metric] || '#fff'}` }}>
-                {camelCaseToWords(categoryKey)}
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          <TableRow>
-            {Object.keys(data).map(categoryKey => (
-              <TableCell key={`values-${categoryKey}-${metric}`} sx={{ color: GROUP_COLORS[metric] || '#fff', backgroundColor: "#444", border: `2px solid ${GROUP_COLORS[metric] || '#fff'}` }}>
-                {formatValue(data[categoryKey], categoryKey, 1)}
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableBody>
-      </Table>
+      <TableContainer sx={{ maxWidth: "100%", overflowX: "auto", mt: 1, ...sx }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              {dataKeys.map(categoryKey => (
+                <TableCell key={categoryKey} sx={{ color: GROUP_COLORS[metric] || '#fff', backgroundColor: "#444", border: `2px solid ${GROUP_COLORS[metric] || '#fff'}` }}>
+                  {camelCaseToWords(categoryKey)}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            <TableRow>
+              {dataKeys.map(categoryKey => {
+                console.log("here")
+                console.log("here", calculatedMetrics[metric]?.[categoryKey] && calculatedMetrics[metric][categoryKey](data), categoryKey, data);
+                return (
+                  <TableCell key={`values-${categoryKey}-${metric}`} sx={{ color: GROUP_COLORS[metric] || '#fff', backgroundColor: "#444", border: `2px solid ${GROUP_COLORS[metric] || '#fff'}` }}>
+                    {calculatedMetrics[metric]?.[categoryKey] ? calculatedMetrics[metric][categoryKey](data) : formatValue(data[categoryKey], categoryKey, 1)}
+                  </TableCell>
+                )
+              })}
+            </TableRow>
+          </TableBody>
+        </Table>
+      </TableContainer>
     );
   };
 
@@ -495,14 +496,6 @@ const RenderTopBar = ({
 // ================================
 
 const CategoryTable = ({ averages, headingColors = {} }) => {
-  const importantMetrics = {
-    fuel: ["attainedCount", "shotCount"],
-    hang: ["attempts", "cycleTime", "lOneRate"],
-    movement: ["bumps", "movementTime", "movements", "trenches"],
-    contact: ["foulCount", "pinCount", "totalTime"],
-    defense: ["totalTime"],
-  };
-
   const renderTableForPhase = (phase) => {
     const robots = Object.keys(averages);
     if (robots.length === 0) {
@@ -519,7 +512,7 @@ const CategoryTable = ({ averages, headingColors = {} }) => {
             <TableRow>
               <TableCell sx={{ color: "#fff", fontWeight: "bold", backgroundColor: "#444", border: "1px solid white" }}>Robot</TableCell>
               {allMetricKeys.map(metric => {
-                const subMetrics = importantMetrics[metric] || [];
+                const subMetrics = importantMetrics[phase][metric] || [];
                 return (
                   <TableCell key={metric} colSpan={subMetrics.length} sx={{
                     textAlign: "center",
@@ -536,7 +529,7 @@ const CategoryTable = ({ averages, headingColors = {} }) => {
             <TableRow>
               <TableCell sx={{ color: "#fff", backgroundColor: "#444", border: "1px solid white" }}></TableCell>
               {allMetricKeys.flatMap(metric => {
-                const subMetrics = importantMetrics[metric] || [];
+                const subMetrics = importantMetrics[phase][metric] || [];
                 return subMetrics.map(subMetric => (
                   <TableCell key={`${metric}-${subMetric}`} sx={{
                     color: headingColors[metric] || "#fff",
@@ -554,16 +547,20 @@ const CategoryTable = ({ averages, headingColors = {} }) => {
               <TableRow key={robot}>
                 <TableCell sx={{ color: "#fff", backgroundColor: "#444" }}>{robot}</TableCell>
                 {allMetricKeys.flatMap(metric => {
-                  const subMetrics = importantMetrics[metric] || [];
-                  return subMetrics.map(subMetric => (
-                    <TableCell key={`${robot}-${metric}-${subMetric}`} sx={{
-                      color: headingColors[metric] || "#fff",
-                      backgroundColor: "#444",
-                      border: `2px solid ${headingColors[metric] || "#fff"}`
-                    }}>
-                      {formatValue(averages[robot]?.[phase]?.[metric]?.[subMetric], subMetric, 1)}
-                    </TableCell>
-                  ));
+                  const subMetrics = importantMetrics[phase][metric] || [];
+                  return subMetrics.map(subMetric => {
+                    const value = averages[robot]?.[phase]?.[metric]?.[subMetric];
+                    const metricValue = averages[robot]?.[phase]?.[metric];
+                    return (
+                      <TableCell key={`${robot}-${metric}-${subMetric}`} sx={{
+                        color: headingColors[metric] || "#fff",
+                        backgroundColor: "#444",
+                        border: `2px solid ${headingColors[metric] || "#fff"}`
+                      }}>
+                        {calculatedMetrics[metric]?.[subMetric] ? calculatedMetrics[metric][subMetric](metricValue) : formatValue(value, subMetric, 1)}
+                      </TableCell>
+                    )
+                  });
                 })}
               </TableRow>
             ))}

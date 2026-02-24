@@ -27,6 +27,15 @@ export const calculateReportTotals = (report) => {
     fuel: {
       attainedCount: 0,
       shotCount: 0,
+      shotRateSum: 0,
+      numShotCycles: 0,
+      snowballRateSum: 0,
+      numSnowballCycles: 0,
+    },
+    movement: {
+      bumps: 0,
+      trenches: 0,
+      movements: 0,
     },
   };
 
@@ -38,11 +47,6 @@ export const calculateReportTotals = (report) => {
     defenseSkill: report.defenseSkill ?? "N/A",
     auto: {
       ...structuredClone(DEFAULT_PHASE_STRUCTURE),
-      movement: {
-        bumps: 0,
-        trenches: 0,
-        movements: 0,
-      },
       hang: {
         attempts: 0,
         lOneRate: 0,
@@ -95,12 +99,19 @@ export const calculateReportTotals = (report) => {
 
     switch (cycleType) {
       case "AUTO_MOVEMENT": {
-        if (location === "BUMP") {
+        const normalizedLocation = String(location).trim().toUpperCase();
+
+        console.log("location:", normalizedLocation, normalizedLocation == "\"BUMP\"", normalizedLocation == "\"TRENCH\"");
+
+        if (normalizedLocation == "\"BUMP\"") {
+          console.log("ADDING CYCLE: BUMP");
           phaseResults.movement.bumps += 1;
-        } else if (location === "TRENCH") {
+        } else if (normalizedLocation == "\"TRENCH\"") {
+          console.log("ADDING CYCLE: TRENCH");
           phaseResults.movement.trenches += 1;
         } else {
-          phaseResults.movement.movementTime = endTime;
+          console.log("ADDING CYCLE: MOVEMENT123123");
+          phaseResults.movement.movements += 1;
         }
         break;
       }
@@ -118,6 +129,8 @@ export const calculateReportTotals = (report) => {
           count = Math.max(1, Math.round((rate * duration) / 1000));
         }
 
+        console.log("abcde", rate, phaseResults.fuel.shotRateSum);
+
         // Intake -> Attained
         if (cycleType === "INTAKE") {
           phaseResults.fuel.attainedCount += count;
@@ -125,13 +138,16 @@ export const calculateReportTotals = (report) => {
         // Shoot -> Shot (Score)
         else if (cycleType === "SHOOT") {
           phaseResults.fuel.shotCount += count;
+          phaseResults.fuel.numShotCycles += 1;
+          phaseResults.fuel.shotRateSum += rate;
         }
         // Snowball -> Feed
         else if (cycleType === "SNOWBALL") {
           phaseResults.fuel.attainedCount += count;
           phaseResults.fuel.shotCount += count;
+          phaseResults.fuel.numSnowballCycles += 1;
+          phaseResults.fuel.snowballRateSum += rate;
         }
-
         break;
       }
 
@@ -182,6 +198,7 @@ export const calculateReportTotals = (report) => {
 
 // ---------- Average metrics helper (keeps similar shape to your original but generic) ----------
 export const calculateAverageMetrics = (reports) => {
+  console.log("avging metrics", reports);
   if (!Array.isArray(reports) || reports.length === 0) return {};
 
   const averageMetrics = {
