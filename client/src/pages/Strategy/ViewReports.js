@@ -70,8 +70,6 @@ const formatValue = (value, key, roundingCount) => {
 const ViewReportGraphs = ({ data, headingColors }) => {
   const [selectedPhase, setSelectedPhase] = useState("tele");
 
-  console.log("alldata123", data);
-
   const getAvailableMetrics = () => {
     if (!data?.reports?.[0]?.totals?.[selectedPhase]) {
       return [];
@@ -89,7 +87,6 @@ const ViewReportGraphs = ({ data, headingColors }) => {
   }, [selectedPhase, data]);
 
   const MetricsChart = ({ data, title }) => {
-    console.log("data123", data);
     let newData = [];
     const maxReportsCount = Math.max(...Object.values(data).map(arr => arr.length));
 
@@ -101,7 +98,6 @@ const ViewReportGraphs = ({ data, headingColors }) => {
       }
       newData.push(nextElement);
     }
-    console.log("data123 new", newData);
 
 
     const colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#FFA500", "#800080", "#008000", "#000080"];
@@ -228,8 +224,6 @@ const ViewIndividualReports = ({ reports, headingColors }) => {
           <TableBody>
             <TableRow>
               {dataKeys.map(categoryKey => {
-                console.log("here")
-                console.log("here", calculatedMetrics[metric]?.[categoryKey] && calculatedMetrics[metric][categoryKey](data), categoryKey, data);
                 return (
                   <TableCell key={`values-${categoryKey}-${metric}`} sx={{ color: GROUP_COLORS[metric] || '#fff', backgroundColor: "#444", border: `2px solid ${GROUP_COLORS[metric] || '#fff'}` }}>
                     {calculatedMetrics[metric]?.[categoryKey] ? calculatedMetrics[metric][categoryKey](data) : formatValue(data[categoryKey], categoryKey, 1)}
@@ -365,7 +359,7 @@ const RenderTopBar = ({
             <Button
               variant="outlined"
               onClick={() => {
-                navigate("/categorySort");
+                navigate(`/categorySort?eventKey=${searchParams.get("eventKey")}`);
               }}
               sx={{
                 borderRadius: "0.7vw",
@@ -378,7 +372,7 @@ const RenderTopBar = ({
                 fontSize: 'calc(0.5vw + 7px)'
               }}
             >
-              ALL DATA
+              SUMMARY
             </Button>
           </Box>
           <Box sx={{ display: "flex", flexDirection: { xs: "row", sm: "column" }, justifyContent: "center", alignItems: "center" }}>
@@ -426,15 +420,12 @@ const RenderTopBar = ({
                   : [robotSearchTerm]
                 }
                 onChange={(event, newValue) => {
-                  console.log("test");
                   setRobotSearchTerm(newValue.filter(Boolean));
 
                   const robotParam = newValue.join(",");
 
                   const urlObj = new URL(window.location.href);
                   const urlParams = urlObj.searchParams;
-
-                  console.log("test", robotParam);
 
                   navigate(
                     `/robots?eventKey=${urlParams.get("eventKey")}&robot=${encodeURIComponent(robotParam)}`
@@ -467,7 +458,6 @@ const RenderTopBar = ({
                 renderTags={(value, getItemProps) =>
                   value.map((option, index) => {
                     const { key, ...itemProps } = getItemProps({ index });
-                    console.log("i", index);
                     return (
                       <Chip
                         variant="outlined"
@@ -708,8 +698,6 @@ const ViewReports = ({ requiredParamKeys = ["eventKey"] }) => {
       });
     });
   }
-
-  console.log(reportData);
 
   return (
     <div style={{ color: "#E0E0E0", width: "100%", backgroundColor: "#11181a" }}>

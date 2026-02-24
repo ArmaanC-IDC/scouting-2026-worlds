@@ -193,9 +193,7 @@ const RenderTopBar = ({
                                 const url = new URL(window.location.href);
                                 url.pathname = "/robots";
                                 setRobotSearchTerm(prevTerm => {
-                                    console.log("rst", prevTerm);
                                     url.searchParams.set("robot", prevTerm.join(","));
-                                    console.log("here", url.href);
                                     window.location.href = url.href;
                                     return prevTerm;
                                 })
@@ -211,7 +209,6 @@ const RenderTopBar = ({
                                     : [robotSearchTerm]
                                 }
                                 onChange={(event, newValue) => {
-                                    console.log("abc", newValue.filter(v => v));
                                     setRobotSearchTerm(newValue.filter(Boolean));
                                     const form = document.getElementById("robotsForm");
                                     const submitEvent = new Event("submit", { bubbles: true, cancelable: true });
@@ -244,7 +241,6 @@ const RenderTopBar = ({
                                 renderTags={(value, getItemProps) =>
                                     value.map((option, index) => {
                                         const { key, ...itemProps } = getItemProps({ index });
-                                        console.log("i", index);
                                         return (
                                             <Chip
                                                 variant="outlined"

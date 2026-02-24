@@ -31,6 +31,9 @@ export const calculateReportTotals = (report) => {
       numShotCycles: 0,
       snowballRateSum: 0,
       numSnowballCycles: 0,
+      shootingTime: 0,
+      snowballingTime: 0,
+      intakingTime: 0,
     },
     movement: {
       bumps: 0,
@@ -134,12 +137,14 @@ export const calculateReportTotals = (report) => {
         // Intake -> Attained
         if (cycleType === "INTAKE") {
           phaseResults.fuel.attainedCount += count;
+          phaseResults.fuel.intakingTime += cycleTime;
         }
         // Shoot -> Shot (Score)
         else if (cycleType === "SHOOT") {
           phaseResults.fuel.shotCount += count;
           phaseResults.fuel.numShotCycles += 1;
           phaseResults.fuel.shotRateSum += rate;
+          phaseResults.fuel.shootingTime += cycleTime;
         }
         // Snowball -> Feed
         else if (cycleType === "SNOWBALL") {
@@ -147,6 +152,7 @@ export const calculateReportTotals = (report) => {
           phaseResults.fuel.shotCount += count;
           phaseResults.fuel.numSnowballCycles += 1;
           phaseResults.fuel.snowballRateSum += rate;
+          phaseResults.fuel.snowballingTime += cycleTime;
         }
         break;
       }

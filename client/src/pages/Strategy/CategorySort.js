@@ -32,7 +32,7 @@ import RequiredParamsDialog from "../Common/RequiredParamsDialog";
 import { getReports } from "../../requests/ApiRequests";
 import HomeIcon from "@mui/icons-material/Home";
 
-const accentColor = "#1fdb25";
+import { accentColor, importantMetrics, calculatedMetrics } from "./Config";
 
 // ----------------- Helper Functions -----------------
 const formatValue = (value, key) => {
@@ -143,7 +143,7 @@ const CategoryTable = ({ group, rows, metricKeys, headingColor }) => {
               <TableCell sx={{ color: "#fff", fontSize: "30px", }}>{row.phase}</TableCell>
               {metricKeys.map((key) => (
                 <TableCell key={key} sx={{ color: "#fff", fontSize: "40px", }}>
-                  {formatValue(row[key], key)}
+                  {calculatedMetrics[group]?.[key] ? calculatedMetrics[group]?.[key](row) : formatValue(row[key], key)}
                 </TableCell>
               ))}
             </TableRow>
@@ -158,7 +158,7 @@ const CategoryTable = ({ group, rows, metricKeys, headingColor }) => {
 const AveragesTable = ({ averages, phaseFilter, headingColors }) => {
   const [openGroups, setOpenGroups] = useState({});
 
-  console.log("avg", averages);
+  console.log("Averages in averagesTable", averages);
 
   const categoryRows = {};
   Object.keys(averages).forEach((robotId) => {
@@ -191,9 +191,7 @@ const AveragesTable = ({ averages, phaseFilter, headingColors }) => {
     <>
       {Object.keys(categoryRows).map((group) => {
         const rows = categoryRows[group];
-        const metricKeys = Array.from(
-          new Set(rows.flatMap((row) => Object.keys(row).filter((key) => key !== "robot" && key !== "phase")))
-        );
+        const metricKeys = importantMetrics[phaseFilter]?.[group] || importantMetrics.tele?.[group] || [];
 
         return (
           <Box key={group} sx={{ mb: 4 }}>
@@ -374,15 +372,12 @@ const CategorySort = ({ requiredParamKeys = ["eventKey"], headingColors = {
                   : [robotSearchTerm]
                 }
                 onChange={(event, newValue) => {
-                  console.log("test");
                   setRobotSearchTerm(newValue.filter(Boolean));
 
                   const robotParam = newValue.join(",");
 
                   const urlObj = new URL(window.location.href);
                   const urlParams = urlObj.searchParams;
-
-                  console.log("test", robotParam);
 
                   navigate(
                     `/robots?eventKey=${urlParams.get("eventKey")}&robot=${encodeURIComponent(robotParam)}`
@@ -415,7 +410,6 @@ const CategorySort = ({ requiredParamKeys = ["eventKey"], headingColors = {
                 renderTags={(value, getItemProps) =>
                   value.map((option, index) => {
                     const { key, ...itemProps } = getItemProps({ index });
-                    console.log("i", index);
                     return (
                       <Chip
                         variant="outlined"

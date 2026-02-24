@@ -37,14 +37,14 @@ export const calculatedMetrics = {
 //what metrics are shown in summaries
 export const importantMetrics = {
     auto: {
-        fuel: ["attainedCount", "shotCount", "avgShotSpeed", "avgSnowballSpeed"],
+        fuel: ["shootingTime", "snowballingTime", "avgShotSpeed", "avgSnowballSpeed", "attainedCount", "shotCount",],
         hang: ["attempts", "cycleTime", "lOneRate"],
         movement: ["bumps", "movements", "trenches"],
         contact: ["foulCount", "pinCount", "totalTime"],
         defense: ["totalTime"],
     },
     tele: {
-        fuel: ["attainedCount", "shotCount", "avgShotSpeed", "avgSnowballSpeed"],
+        fuel: ["shootingTime", "snowballingTime", "avgShotSpeed", "avgSnowballSpeed", "attainedCount", "shotCount",],
         hang: ["attempts", "cycleTime", "lOneRate", "lTwoRate", "lThreeRate"],
         movement: ["bumps", "trenches"],
         contact: ["foulCount", "pinCount", "totalTime"],
@@ -55,12 +55,12 @@ export const importantMetrics = {
 //what metrics are visible (for individual reports)
 export const visibleMetrics = {
     auto: {
-        fuel: ["attainedCount", "shotCount", "numShotCycles", "numSnowballCycles", "avgShotSpeed", "avgSnowballSpeed"],
+        fuel: ["shootingTime", "snowballingTime", "intakingTime", "avgShotSpeed", "avgSnowballSpeed", "attainedCount", "shotCount", "numShotCycles", "numSnowballCycles"],
         hang: ["attempts", "cycleTime", "avgHangPoints", "lOneRate"],
         movement: ["bumps", "movements", "trenches"],
     },
     tele: {
-        fuel: ["attainedCount", "shotCount", "numShotCycles", "numSnowballCycles", "avgShotSpeed", "avgSnowballSpeed"],
+        fuel: ["shootingTime", "snowballingTime", "intakingTime", "avgShotSpeed", "avgSnowballSpeed", "attainedCount", "shotCount", "numShotCycles", "numSnowballCycles"],
         hang: ["attempts", "cycleTime", "lOneRate", "lTwoRate", "lThreeRate"],
         contact: ["foulCount", "pinCount", "totalTime"],
         movement: ["bumps", "trenches"],
