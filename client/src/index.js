@@ -30,4 +30,9 @@ const reportWebVitals = (onPerfEntry) => {
 
 reportWebVitals();
 
-serviceWorkerRegistration.register();
+// Only register service worker in production builds
+if (process.env.NODE_ENV === "production") {
+  serviceWorkerRegistration.register();
+} else {
+  serviceWorkerRegistration.unregister(); // ensures dev reloads work normally
+}
