@@ -84,6 +84,14 @@ const SignInPage = () => {
             Sign In
           </Button>
         </form>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          onClick={() => navigate("/scoutMatch")}
+          sx={{
+            mt: 1,
+          }}
+        >SCOUT MATCH</Button>
       </Paper>
     </Container>
   );

@@ -27,6 +27,7 @@
     "recharts": "^2.15.1",
     "run": "^1.5.0",
     "sass": "^1.83.4",
+    "scouting-2023": "file:..",
     "web-vitals": "^2.1.4"
   },
   "overrides": {
