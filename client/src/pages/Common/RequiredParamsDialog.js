@@ -11,6 +11,8 @@ import {
   TextField,
   Button,
   Typography,
+  Box,
+  ButtonGroup
 } from "@mui/material";
 import { ATTENDING_EVENTS, PRACTICE_EVENTS } from "../ScoutMatch/Constants";
 
@@ -32,6 +34,8 @@ export const SUPPORTED_PARAMS = {
   robot: {
     label: "Robot",
     type: "text",
+    helperText:
+      "Please confirm the robot numberis exactly right"
   },
   station: {
     label: "Station",
@@ -48,6 +52,7 @@ const RequiredParamsDialog = ({
   searchParamsError,
   // Array of parameter keys that are required in this dialog.
   // e.g. ["eventKey", "matchKey", "robot"]
+  offlineRequiredParamKeys = [],
   requiredParamKeys = ["eventKey"],
 }) => {
   // Build a configuration array from the keys.
@@ -58,6 +63,9 @@ const RequiredParamsDialog = ({
   // Build initial state from searchParams for only the required params.
   const getInitialValues = () => {
     const initial = {};
+    Object.keys(SUPPORTED_PARAMS).forEach(key => {
+      initial[key] = "";
+    })
     requiredParamKeys.forEach((key) => {
       initial[key] = searchParams.get(key) || "";
     });
@@ -65,6 +73,7 @@ const RequiredParamsDialog = ({
   };
 
   const [values, setValues] = useState(getInitialValues());
+  const [networkMode, setNetworkMode] = useState(true);
 
   // Update local state when searchParams change.
   useEffect(() => {
@@ -85,20 +94,32 @@ const RequiredParamsDialog = ({
       (key) => values[key] && values[key].trim() !== ""
     );
     if (allPresent) {
-      onSubmit(values);
+      onSubmit(values, networkMode);
     }
   };
 
   return (
     <Dialog open={open}>
       <DialogTitle>Enter Required Information</DialogTitle>
+      <Box sx={{width: "90%", justifyContent: "center", display: "flex", alignSelf: "center"}}>
+        <ButtonGroup variant="contained" sx={{width: "100%", display: "flex"}}>
+          <Button 
+            sx={{color: "#222", bgcolor: networkMode ? "#999" : "#777", width: "100%"}}
+            onClick={() => setNetworkMode(true)}
+          >ONLINE</Button>
+          <Button 
+            sx={{color: "#222", bgcolor: !networkMode ? "#999" : "#777", width: "100%"}}
+            onClick={() => setNetworkMode(false)}
+          >OFFLINE</Button>
+        </ButtonGroup>
+      </Box>
       <DialogContent>
         {searchParamsError && (
           <Typography variant="body2" color="error">
             {searchParamsError}
           </Typography>
         )}
-        {requiredParamKeys.map((key) => {
+        {(networkMode ? requiredParamKeys : offlineRequiredParamKeys).map((key) => {
           const param = SUPPORTED_PARAMS[key];
           if (!param) return null;
           if (param.type === "select") {

@@ -81,12 +81,20 @@ const ScoutMatch = () => {
     }
   }, [searchParams]);
 
-  const handleMissingParamsSubmit = ({ eventKey, matchKey, station }) => {
+  const handleMissingParamsSubmit = ({ eventKey, matchKey, station, robot }, usedNetwork) => {
     setSearchParams({
       eventKey: eventKey.toLowerCase(),
       matchKey: matchKey.toLowerCase(),
       station,
     });
+    if (!usedNetwork){
+      console.log("here", eventKey, matchKey, station);
+      setScoutData({
+        matchKey,
+        station,
+        teamNumber: robot,
+      });
+    }
     setSearchParamsError(null);
   };
 
@@ -289,7 +297,7 @@ const ScoutMatch = () => {
 
   let fetching = false;
   const fetchScoutMatchData = async () => {
-    if (fetching || !eventKey || !driverStation || !matchKey) { return; }
+    if (fetching || !eventKey || !driverStation || !matchKey || !navigator.online) { return; }
     try {
       fetching = true;
       const response = await getScoutMatch({ eventKey, station: driverStation, matchKey });
@@ -804,6 +812,7 @@ const ScoutMatch = () => {
             searchParamsError={searchParamsError}
             onSubmit={handleMissingParamsSubmit}
             requiredParamKeys={["eventKey", "matchKey", "station"]}
+            offlineRequiredParamKeys={["eventKey", "matchKey", "station", "robot"]}
           />
           <Box
             ref={scaledBoxRef}
