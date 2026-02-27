@@ -4,6 +4,7 @@ import { Box, Typography, Button, Paper, LinearProgress } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { getScoutMatch, submitMatch } from "../requests/ApiRequests";
 import { getSignedInUser } from "../TokenUtils.js";
+import AppAlert from "./Common/AppAlert.js";
 
 const ScanQR = () => {
     const navigate = useNavigate();
@@ -12,6 +13,13 @@ const ScanQR = () => {
     const [totalParts, setTotalParts] = useState(0);
     const [result, setResult] = useState(null);
     const [parsedData, setParsedData] = useState(null);
+    const [alertOpen, setAlertOpen] = useState(false);
+    const [alertMessage, setAlertMessage] = useState("");
+
+    const showAlert = (message) => {
+        setAlertMessage(message);
+        setAlertOpen(true);
+    };
 
     // useRef to hold the scanner instance
     const qrInstance = useRef(null);
@@ -144,7 +152,7 @@ const ScanQR = () => {
         if (!parsedData) return;
         const { eventKey, matchKey, station, ...matchData } = parsedData;
         if (!eventKey || !matchKey || !station) {
-            alert("Invalid QR data: Missing event/match/station info.");
+            showAlert("Invalid QR data: Missing event/match/station info.");
             return;
         }
 
@@ -156,6 +164,7 @@ const ScanQR = () => {
         // }) => {
 
         try {
+            showAlert("submitting");
             const res = await submitMatch({
                 eventKey,
                 matchKey,
@@ -164,14 +173,14 @@ const ScanQR = () => {
             });
 
             if (res.status === 200) {
-                alert("Match submitted");
+                showAlert("Match submitted");
             } else {
-                alert("Submission error");
+                showAlert("Submission error");
                 console.log(res);
             }
 
         } catch (err) {
-            alert("Network error");
+            showAlert("Network error");
             console.error(err);
             console.log(err.response);
         }
@@ -264,9 +273,9 @@ const ScanQR = () => {
                             variant="outlined"
                             color="primary"
                             sx={{ mt: 2 }}
-                            onClick={() => window.location.reload()}
+                            onClick={() => navigate("/")}
                         >
-                            Scan Another
+                            Back To Home
                         </Button>
                     </Box>
                 ) : (
@@ -295,12 +304,17 @@ const ScanQR = () => {
                 <Button
                     variant="contained"
                     color="secondary"
-                    onClick={() => navigate("/")}
                     sx={{ mt: 2 }}
+                    onClick={() => window.location.reload()}
                 >
-                    Back to Home
+                    Scan Another
                 </Button>
             </Paper>
+            <AppAlert
+                open={alertOpen}
+                message={alertMessage}
+                onClose={() => setAlertOpen(false)}
+            />
         </Box>
     );
 };

@@ -172,7 +172,7 @@ const HomePage = () => {
             ))}
           </Grid>
 
-          <AdminAccordion>
+          <AdminAccordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMoreIcon sx={{color: "#fff"}}/>}>
               <Typography sx={{fontWeight: 'bold'}}>Admin Dashboard</Typography>
             </AccordionSummary>
