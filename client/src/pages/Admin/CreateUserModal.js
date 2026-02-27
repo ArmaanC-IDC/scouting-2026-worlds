@@ -7,12 +7,20 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import MenuItem from "@mui/material/MenuItem";
 import { postCreateUser } from "../../requests/AuthRequests.js";
+import AppAlert from "../Common/AppAlert.js";
 
 const CreateUserModal = ({ open, handleClose }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
   const [error, setError] = useState("");
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+
+  const showAlert = (message) => {
+      setAlertMessage(message);
+      setAlertOpen(true);
+  };
 
   // Reset form when modal is closed
   useEffect(() => {
@@ -27,7 +35,7 @@ const CreateUserModal = ({ open, handleClose }) => {
   const handleCreateUser = async () => {
     try {
       const response = await postCreateUser(username, password, role);
-      alert("User created successfully: " + JSON.stringify(response.data));
+      showAlert("User created successfully: " + JSON.stringify(response.data));
       handleClose(); // Close modal after successful creation
     } catch (err) {
       setError(
@@ -87,6 +95,11 @@ const CreateUserModal = ({ open, handleClose }) => {
           Create
         </Button>
       </DialogActions>
+      <AppAlert
+          open={alertOpen}
+          message={alertMessage}
+          onClose={() => setAlertOpen(false)}
+      />
     </Dialog>
   );
 };

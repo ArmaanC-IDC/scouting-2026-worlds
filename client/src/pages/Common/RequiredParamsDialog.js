@@ -15,6 +15,8 @@ import {
   ButtonGroup
 } from "@mui/material";
 import { ATTENDING_EVENTS, PRACTICE_EVENTS } from "../ScoutMatch/Constants";
+import { useNavigate } from "react-router-dom";
+import HomeIcon from '@mui/icons-material/Home';
 
 // Constant configuration for all supported parameters.
 // These values are fixed and cannot be changed externally.
@@ -72,6 +74,8 @@ const RequiredParamsDialog = ({
     });
     return initial;
   };
+
+  const navigate = useNavigate();
 
   const [values, setValues] = useState(getInitialValues());
   const [networkMode, setNetworkMode] = useState(true);
@@ -157,7 +161,15 @@ const RequiredParamsDialog = ({
           );
         })}
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{display: "flex", justifyContent: "space-between"}}>
+        <Button
+          onClick={() => navigate("/")}
+          variant="contained"
+          sx={{backgroundColor: "#ddd", color: "#676767"}}
+        >
+          <HomeIcon/>
+        </Button>
+
         <Button
           onClick={handleSubmit}
           variant="contained"

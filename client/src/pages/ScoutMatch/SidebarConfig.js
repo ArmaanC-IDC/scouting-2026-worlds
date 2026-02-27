@@ -186,7 +186,7 @@ export const SIDEBAR_CONFIG = [
         true, // submitAfter = true → NETWORK
         (response) => {
           if (response?.status === 200) {
-            alert("Match submitted successfully!");
+            match.showAlert("Match submitted successfully!");
             match.setScoutData(null);
             match.setSearchParams({
               eventKey: match.searchParams.get("eventKey"),
@@ -195,7 +195,7 @@ export const SIDEBAR_CONFIG = [
             });
             match.navigate(`/scoutMatch?eventKey=${match.searchParams.get("eventKey")}&matchKey=${match.scoutData.nextMatchKey}&station=${match.searchParams.get("station")}`)
           } else {
-            alert("Submission failed — saved locally for resync.");
+            match.showAlert("Submission failed — saved locally for resync.");
           }
         }
       );

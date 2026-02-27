@@ -28,10 +28,19 @@ const AdminPage = () => {
         <Button
           variant="contained"
           color="primary"
+          onClick={() => navigate("/")}
+        >
+          Home
+        </Button>
+        
+        <Button
+          variant="contained"
+          color="primary"
           onClick={handleOpenCreateUser}
         >
           Create User
         </Button>
+
         <Button
           variant="contained"
           color="primary"

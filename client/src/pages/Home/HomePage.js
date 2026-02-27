@@ -185,7 +185,7 @@ const HomePage = () => {
                   <Button variant="contained" fullWidth startIcon={<QrCodeScannerIcon />} onClick={() => navigate("/scan")}>Scan QR</Button>
                 </Grid>
                 <Grid item xs={12} sm={4}>
-                  <Button variant="contained" fullWidth startIcon={<LeaderboardIcon />} onClick={() => navigate("/scoutAdmin")}>Scout Rankings</Button>
+                  <Button variant="contained" fullWidth startIcon={<LeaderboardIcon />} onClick={() => navigate("/scoutRankings")}>Scout Rankings</Button>
                 </Grid>
               </Grid>
             </AccordionDetails>

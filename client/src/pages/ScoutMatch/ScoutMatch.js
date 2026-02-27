@@ -37,6 +37,7 @@ import { SIDEBAR_CONFIG } from "./SidebarConfig.js";
 import { getSignedInUser } from "../../TokenUtils.js";
 import RequiredParamsDialog from "../Common/RequiredParamsDialog.js";
 import { useNavigate } from "react-router-dom";
+import AppAlert from "../Common/AppAlert.js";
 
 const { R1, R2, R3 } = DRIVER_STATIONS;
 const { SCORING_TABLE_FAR } = PERSPECTIVE;
@@ -118,6 +119,13 @@ const ScoutMatch = () => {
 
   const [displayTime, setDisplayTime] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+
+  const showAlert = (message) => {
+      setAlertMessage(message);
+      setAlertOpen(true);
+  };
 
   const isUndoingRef = useRef(false);
 
@@ -359,6 +367,7 @@ const ScoutMatch = () => {
   // ===================================================================================
   // 5. === CRITICAL CHANGE === UPDATED Context Wrapper with new state and setters
   // ===================================================================================
+
   const CONTEXT_WRAPPER = {
     // History Hook State and Functions
     state,
@@ -394,7 +403,8 @@ const ScoutMatch = () => {
     scaleWidthToActual,
     navigate,
     lastUndoMessage,
-    redoMessage
+    redoMessage,
+    showAlert
   };
 
 
@@ -863,6 +873,11 @@ const ScoutMatch = () => {
               {renderSideBar()}
             </Box>
           </Box>
+          <AppAlert
+              open={alertOpen}
+              message={alertMessage}
+              onClose={() => setAlertOpen(false)}
+          />
         </Box>
       </ThemeProvider>
     </MatchContext.Provider>

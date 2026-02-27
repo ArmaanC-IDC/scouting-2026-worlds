@@ -6,10 +6,18 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import { postImportMatches } from "../../requests/ApiRequests.js";
+import AppAlert from "../Common/AppAlert.js";
 
 const ImportEventModal = ({ open, handleClose }) => {
   const [eventCode, setEventCode] = useState("");
   const [error, setError] = useState("");
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+
+  const showAlert = (message) => {
+      setAlertMessage(message);
+      setAlertOpen(true);
+  };
 
   useEffect(() => {
     if (!open) {
@@ -21,7 +29,7 @@ const ImportEventModal = ({ open, handleClose }) => {
   const handleImport = async () => {
     try {
       const response = await postImportMatches(eventCode);
-      alert("Matches imported successfully: " + JSON.stringify(response.data));
+      showAlert("Matches imported successfully: " + JSON.stringify(response.data));
       handleClose();
     } catch (err) {
       setError(
@@ -61,6 +69,11 @@ const ImportEventModal = ({ open, handleClose }) => {
           Import
         </Button>
       </DialogActions>
+      <AppAlert
+          open={alertOpen}
+          message={alertMessage}
+          onClose={() => setAlertOpen(false)}
+      />
     </Dialog>
   );
 };

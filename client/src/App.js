@@ -14,7 +14,7 @@ import { ProtectedRoute } from "./TokenUtils.js";
 import MatchStrategy from "./pages/Strategy/MatchStrategy.js";
 import ViewReports from "./pages/Strategy/ViewReports.js";
 import Overview from "./pages/Strategy/Overview.js";
-import ScoutAdmin from "./pages/ScoutLead/ScoutAdmin.js";
+import ScoutRankings from "./pages/Admin/ScoutRankings.js";
 import CategorySort from "./pages/Strategy/CategorySort.js";
 import AutoPathVisualizer from "./pages/Strategy/AutoPaths.js";
 import ScanQR from "./pages/ScanQR.js";
@@ -66,10 +66,10 @@ function App() {
           />
 
           <Route
-            path="/scoutAdmin"
+            path="/scoutRankings"
             element={
               <ProtectedRoute>
-                <ScoutAdmin />
+                <ScoutRankings />
               </ProtectedRoute>
             }
           />

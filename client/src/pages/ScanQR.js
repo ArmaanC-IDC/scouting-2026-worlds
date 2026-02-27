@@ -133,18 +133,20 @@ const ScanQR = () => {
         try {
             console.log("str", str);
             const json = JSON.parse(str);
+            showAlert("Getting match data (report ID and Robot");
             const res = await getScoutMatch({
                 eventKey: json.eventKey, 
                 matchKey: json.matchKey, 
                 station: json.station
             });
+            showAlert("Got match data");
             const reportId = res.data.reportId;
             const robot = res.data.teamNumber;
             console.log("rId, robot", reportId, robot, res)
             console.log("parsed Data", {...json, reportId, robot});
             setParsedData({...json.matchData, reportId, robot});
         } catch (e) {
-            console.warn("Could not parse result as JSON", e);
+            showAlert("Could not parse result", e);
         }
     }
 
@@ -268,15 +270,6 @@ const ScanQR = () => {
                                 Submit Match
                             </Button>
                         )}
-
-                        <Button
-                            variant="outlined"
-                            color="primary"
-                            sx={{ mt: 2 }}
-                            onClick={() => navigate("/")}
-                        >
-                            Back To Home
-                        </Button>
                     </Box>
                 ) : (
                     <>
@@ -301,13 +294,21 @@ const ScanQR = () => {
                     </>
                 )}
 
-                <Button
+                {result && <Button
                     variant="contained"
                     color="secondary"
                     sx={{ mt: 2 }}
                     onClick={() => window.location.reload()}
                 >
                     Scan Another
+                </Button>}
+                <Button
+                    variant="outlined"
+                    color="primary"
+                    sx={{ mt: 2 }}
+                    onClick={() => navigate("/")}
+                >
+                    Back To Home
                 </Button>
             </Paper>
             <AppAlert
