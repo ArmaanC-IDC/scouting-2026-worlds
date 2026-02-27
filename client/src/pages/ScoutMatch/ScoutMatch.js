@@ -313,7 +313,7 @@ const ScoutMatch = () => {
 
   let fetching = false;
   const fetchScoutMatchData = async () => {
-    if (fetching || !eventKey || !driverStation || !matchKey || !navigator.online) { return; }
+    if (fetching || !eventKey || !driverStation || !matchKey || !navigator.onLine) { return; }
     try {
       fetching = true;
       const response = await getScoutMatch({ eventKey, station: driverStation, matchKey });

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Box, Typography, Button, Paper, LinearProgress } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { submitMatch } from "../requests/ApiRequests";
+import { getScoutMatch, submitMatch } from "../requests/ApiRequests";
 import { getSignedInUser } from "../TokenUtils.js";
 
 const ScanQR = () => {
@@ -121,10 +121,20 @@ const ScanQR = () => {
         };
     }, []); // Rerun effect if totalParts changes (though it shouldn't after the first scan)
 
-    const tryParse = (str) => {
+    const tryParse = async (str) => {
         try {
+            console.log("str", str);
             const json = JSON.parse(str);
-            setParsedData(json);
+            const res = await getScoutMatch({
+                eventKey: json.eventKey, 
+                matchKey: json.matchKey, 
+                station: json.station
+            });
+            const reportId = res.data.reportId;
+            const robot = res.data.teamNumber;
+            console.log("rId, robot", reportId, robot, res)
+            console.log("parsed Data", {...json, reportId, robot});
+            setParsedData({...json.matchData, reportId, robot});
         } catch (e) {
             console.warn("Could not parse result as JSON", e);
         }
@@ -138,23 +148,32 @@ const ScanQR = () => {
             return;
         }
 
+        //             export const submitMatch = async ({
+        //   eventKey,
+        //   matchKey,
+        //   station,
+        //   matchData,
+        // }) => {
+
         try {
-            //             export const submitMatch = async ({
-            //   eventKey,
-            //   matchKey,
-            //   station,
-            //   matchData,
-            // }) => {
-            const res = await submitMatch({ eventKey, matchKey, station, matchData: matchData.matchData });
+            const res = await submitMatch({
+                eventKey,
+                matchKey,
+                station,
+                matchData
+            });
+
             if (res.status === 200) {
                 alert("Match submitted");
             } else {
                 alert("Submission error");
                 console.log(res);
             }
+
         } catch (err) {
+            alert("Network error");
             console.error(err);
-            alert("Submission error: " + err.message);
+            console.log(err.response);
         }
     };
 

@@ -23,7 +23,8 @@ export const saveMatch = (
   submitAfter = true,
   postSubmitCallback = null
 ) => {
-  console.log(matchData);
+  console.log("matchData", matchData);
+  console.log("searchParams", searchParams);
   const syncedKey = generateKey(
     matchData.reportId,
     Object.fromEntries(searchParams),
