@@ -91,8 +91,6 @@ const AdminAccordion = styled(Accordion)(({ theme }) => ({
 const LogoImage = styled('img')({
     height: '45px',
     marginRight: '16px',
-    // mixBlendMode: 'multiply', // This CSS property helps "chroma key" the white background
-    // filter: "saturate(20)"
 });
 
 

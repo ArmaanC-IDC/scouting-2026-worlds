@@ -11,7 +11,7 @@ import HomeIcon from '@mui/icons-material/Home';
 
 // Import supporting components and assets
 import RequiredParamsDialog from "../Common/RequiredParamsDialog";
-import altf4Logo from "../../assets/scouting-2025/altf4_logo_black.png"; // Adjust path if needed
+import altf4Logo from "../../assets/scouting-2025/altf4_logo_white.png"; // Adjust path if needed
 
 // --- THEME DEFINITION (Consistent with other pages) ---
 const darkTheme = createTheme({
@@ -65,7 +65,6 @@ const CollapseBox = styled(Box)(({ theme }) => ({
 const LogoImage = styled('img')({
     height: '45px',
     marginRight: '16px',
-    mixBlendMode: 'multiply',
 });
 
 // --- SCOUT RANKINGS COMPONENT ---

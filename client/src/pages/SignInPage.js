@@ -17,7 +17,7 @@ import {
 import { styled } from "@mui/material/styles";
 
 // Import your logo
-import altf4Logo from "../assets/scouting-2025/altf4_logo_black.png"; // Adjust path if needed
+import altf4Logo from "../assets/scouting-2025/altf4_logo_white.png"; // Adjust path if needed
 
 // --- THEME DEFINITION (Consistent with HomePage) ---
 const darkTheme = createTheme({
@@ -86,7 +86,6 @@ const SubmitButton = styled(Button)(({ theme }) => ({
 const LogoImage = styled('img')({
     width: '80px',
     marginBottom: '16px',
-    mixBlendMode: 'multiply',
 });
 
 const StyledDivider = styled(Divider)(({ theme }) => ({
