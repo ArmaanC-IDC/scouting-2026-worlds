@@ -13,11 +13,12 @@ import {
   ThemeProvider,
   CssBaseline,
   Divider,
+  CircularProgress, // Import CircularProgress
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 
 // Import your logo
-import altf4Logo from "../assets/scouting-2025/altf4_logo_white.png"; // Adjust path if needed
+import altf4Logo from "../assets/scouting-2025/altf4_logo_white.png";
 
 // --- THEME DEFINITION (Consistent with HomePage) ---
 const darkTheme = createTheme({
@@ -46,6 +47,7 @@ const FullPageContainer = styled(Box)({
 });
 
 const SignInPaper = styled(Paper)(({ theme }) => ({
+  position: 'relative', // Needed for potential absolute positioning of loader
   padding: theme.spacing(4),
   textAlign: 'center',
   backgroundColor: theme.palette.background.paper,
@@ -77,6 +79,7 @@ const StyledTextField = styled(TextField)({
 const SubmitButton = styled(Button)(({ theme }) => ({
     padding: '10px 0',
     marginTop: theme.spacing(2),
+    minHeight: '44px', 
     transition: 'background-color 0.3s ease',
     "&:hover": {
         backgroundColor: theme.palette.primary.dark,
@@ -102,11 +105,13 @@ const SignInPage = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false); // New loading state
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true); // Start loading
 
     try {
       const response = await postSignIn(username, password);
@@ -126,6 +131,8 @@ const SignInPage = () => {
       } else {
         setError("Something went wrong. Please try again.");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -148,6 +155,7 @@ const SignInPage = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
+                  disabled={isLoading} // Disable when loading
                 />
               </Box>
               <Box mb={2}>
@@ -159,6 +167,7 @@ const SignInPage = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={isLoading} // Disable when loading
                 />
               </Box>
               {error && (
@@ -166,8 +175,14 @@ const SignInPage = () => {
                   <Alert severity="error">{error}</Alert>
                 </Box>
               )}
-              <SubmitButton type="submit" variant="contained" color="primary" fullWidth>
-                Sign In
+              <SubmitButton
+                type="submit"
+                variant="contained"
+                color="primary"
+                fullWidth
+                disabled={isLoading} // Disable when loading
+              >
+                {isLoading ? <CircularProgress size={24} color="inherit" /> : "Sign In"}
               </SubmitButton>
             </form>
 
@@ -178,6 +193,7 @@ const SignInPage = () => {
               color="primary" 
               onClick={() => navigate("/scoutMatch")}
               fullWidth
+              disabled={isLoading} // Disable when loading
               sx={{
                 border: `0.2vw solid ${darkTheme.palette.primary.main}`
               }}
