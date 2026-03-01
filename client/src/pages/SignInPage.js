@@ -144,7 +144,7 @@ const SignInPage = () => {
           <SignInPaper elevation={10}>
             <LogoImage src={altf4Logo} alt="Team Logo" />
             <Typography variant="h4" component="h1" gutterBottom>
-              Sign In
+              Sign In 2
             </Typography>
             <form onSubmit={handleSubmit}>
               <Box mb={2}>
