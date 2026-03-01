@@ -144,7 +144,7 @@ const SignInPage = () => {
           <SignInPaper elevation={10}>
             <LogoImage src={altf4Logo} alt="Team Logo" />
             <Typography variant="h4" component="h1" gutterBottom>
-              Sign In 2
+              Sign In
             </Typography>
             <form onSubmit={handleSubmit}>
               <Box mb={2}>
@@ -198,7 +198,7 @@ const SignInPage = () => {
                 border: `0.2vw solid ${darkTheme.palette.primary.main}`
               }}
             >
-              Scout Match (Offline)
+              Scout Match
             </Button>
           </SignInPaper>
         </Container>
