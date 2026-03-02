@@ -198,7 +198,7 @@ const SignInPage = () => {
                 border: `0.2vw solid ${darkTheme.palette.primary.main}`
               }}
             >
-              Scout Match (offline)
+              Scout Match
             </Button>
           </SignInPaper>
         </Container>
