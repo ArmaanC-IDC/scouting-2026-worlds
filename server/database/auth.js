@@ -84,8 +84,9 @@ const authenticateUserInternal = async (username, plainPassword) => {
       const user = res.rows[0];
       const isMatch = await bcrypt.compare(plainPassword, user.password);
 
-      // if (isMatch) {
-      if (true) {
+      console.log("Match login", isMatch);
+      if (isMatch) {
+      // if (true) {
         console.log(
           `User authenticated: ID ${user.user_id}, Username: ${user.username}, Role: ${user.role}`
         );
