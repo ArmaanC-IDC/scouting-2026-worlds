@@ -232,7 +232,7 @@ export const SIDEBAR_CONFIG = [
       };
       const params = Object.fromEntries(match.searchParams);
 
-      console.log(matchData);
+      console.log("matchData", matchData);
       console.log(params);
 
       saveMatch(

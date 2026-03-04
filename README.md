@@ -6,3 +6,9 @@ Armaan
 Mikaila
 Daisy
 Athrun
+
+TODO:
+ - Compress QR codes
+ - Make center only visible when bot moves to center and same with Alliance zone
+ - Auto Path Viewer (with appropriate collection)
+ - Betting on match outcomes

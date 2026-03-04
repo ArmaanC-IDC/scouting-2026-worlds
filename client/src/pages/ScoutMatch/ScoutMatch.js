@@ -87,6 +87,7 @@ const ScoutMatch = () => {
       eventKey: eventKey.toLowerCase(),
       matchKey: matchKey.toLowerCase(),
       station,
+      perspective: PERSPECTIVE.SCORING_TABLE_NEAR
     });
     if (!usedNetwork){
       console.log("here", eventKey, matchKey, station);

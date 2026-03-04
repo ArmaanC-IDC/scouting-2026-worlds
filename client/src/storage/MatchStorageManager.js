@@ -2,6 +2,7 @@
 
 import { submitMatch as submitMatchRequest } from "../requests/ApiRequests";
 import QRCode from "qrcode";
+import { compressData } from "../pages/Common/Constants";
 
 // Track submissions in progress by their unsynced key.
 const submissionsInProgress = new Set();
@@ -162,7 +163,7 @@ export const resyncAllMatches = async () => {
 
 export const showQRCodePopup = (matchData, searchParams) => {
   const { eventKey, matchKey, station } = Object.fromEntries(searchParams);
-  const jsonString = JSON.stringify({ eventKey, matchKey, station, matchData });
+  const jsonString = JSON.stringify(compressData({ eventKey, matchKey, station, matchData }));
   const CHUNK_SIZE = 750; // Safe limit for dense QR codes
   const totalChunks = Math.ceil(jsonString.length / CHUNK_SIZE);
   const chunks = [];

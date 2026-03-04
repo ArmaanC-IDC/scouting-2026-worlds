@@ -42,6 +42,7 @@ const Sidebar = ({
                     eventKey: searchParams.get("eventKey"),
                     station: searchParams.get("station"),
                     matchKey: matchKeyEntry,
+                    perspective: PERSPECTIVE.SCORING_TABLE_NEAR,
                     [paramName]: list[key],
                   });
                 }}
@@ -117,18 +118,18 @@ const Sidebar = ({
           <h3 key="sidebarPerspectiveHeading">PERSPECTIVE</h3>
         </center>,
 
-        createButtonsFromList(
-          PERSPECTIVE,
-          750,
-          "perspective",
-          "blue",
-          (list, key) => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const perspective =
-              urlParams.get("perspective") || PERSPECTIVE.SCORING_TABLE_FAR;
-            return perspective == list[key];
-          }
-        ),
+        // createButtonsFromList(
+        //   PERSPECTIVE,
+        //   750,
+        //   "perspective",
+        //   "blue",
+        //   (list, key) => {
+        //     const urlParams = new URLSearchParams(window.location.search);
+        //     const perspective =
+        //       urlParams.get("perspective") || PERSPECTIVE.SCORING_TABLE_FAR;
+        //     return perspective == list[key];
+        //   }
+        // ),
 
         <center key="matchKey">
           <h3>Match Key</h3>

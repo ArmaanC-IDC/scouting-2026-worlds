@@ -22,6 +22,7 @@ const isScoringTableFar = (perspective) => perspective === SCORING_TABLE_FAR;
 
 const getDefenseOffset = (isBlue, isDefending) => {
   if (!isDefending) return 0;
+  // Returns the offset as a percentage (e.g., 0.38 for 38%)
   return isBlue ? 0.38 : -0.38;
 }
 
@@ -32,98 +33,93 @@ const getDefenseOffset = (isBlue, isDefending) => {
 
 const SCREEN_FIELD_VIRTUAL_WIDTH = FIELD_VIRTUAL_WIDTH * 0.62;
 const imageScaleGlobal = 1;
+// This is the static offset to show the correct half of the field for the blue alliance.
 const imageOffsetXGlobal = (isBlue) => isBlue ? -0.382 : 0;
 
 const scaleCoordinates = (
   fieldX, fieldY, width, height, actualWidth, actualHeight, perspective, isBlue, isDefending, flip
 ) => {
-  const imageScale = imageScaleGlobal;
-  const imageOffsetX = imageOffsetXGlobal(isBlue);
-
   if (!flip) {
     const topLeftX = fieldX - width / 2;
     const topLeftY = fieldY - height / 2;
-
-    // Convert the final virtual coordinate to a screen pixel coordinate.
     const scaledX = (topLeftX / FIELD_VIRTUAL_WIDTH) * actualWidth;
     const scaledY = (topLeftY / FIELD_VIRTUAL_HEIGHT) * actualHeight;
-
     const scaledWidth = (width / FIELD_VIRTUAL_WIDTH) * actualWidth;
     const scaledHeight = (height / FIELD_VIRTUAL_HEIGHT) * actualHeight;
-
     return { scaledX, scaledY, scaledWidth, scaledHeight };
   }
 
   // --- START OF THE FIX ---
 
+  // Determine the final state of the coordinate system based on perspective and alliance.
   let flipX = false;
   let flipY = false;
 
-  // Rule 1: Perspective flips X. We toggle the flipX state.
   if (isScoringTableFar(perspective)) {
     fieldX = SCREEN_FIELD_VIRTUAL_WIDTH - fieldX;
     flipY = !flipY;
   }
-
-  // Rule 2: Blue alliance flips both X and Y. We toggle both states.
   if (isBlue) {
     flipX = !flipX;
     flipY = !flipY;
   }
 
-  let fieldX2 = fieldX;
-
-  if (flip) {
-    fieldX2 = fieldX -
-      (getDefenseOffset(isBlue, isDefending) *
-        FIELD_VIRTUAL_WIDTH *
-        0.85
-        * (isScoringTableFar(perspective) ? 1 : -1)
-      );
-  }
-  //multiply by 0.85 because the buttons need to move a little less than the picture
-
-
-  // 2. Apply the final transformation state ONCE to the original coordinates.
-  const finalX = flipX ? FIELD_VIRTUAL_WIDTH - fieldX2 : fieldX2;
+  // Apply the final flip state ONCE to the canonical coordinates.
+  // The complex defense offset logic has been removed from here.
+  const finalX = flipX ? FIELD_VIRTUAL_WIDTH - fieldX : fieldX;
   const finalY = flipY ? FIELD_VIRTUAL_HEIGHT - fieldY : fieldY;
 
-  // --- END OF THE FIX ---
-
-  // Adjust from center-point to top-left for CSS positioning using the final transformed coordinates.
+  // Adjust from center-point to top-left for CSS positioning.
   const topLeftX = finalX - width / 2;
   const topLeftY = finalY - height / 2;
 
   const expectedWidth = actualHeight * FIELD_ASPECT_RATIO;
   const containerOffsetX = Math.max((actualWidth - expectedWidth) / 2, 0);
 
-  // Convert the final virtual coordinate to a screen pixel coordinate.
-  const scaledX = ((topLeftX / FIELD_VIRTUAL_WIDTH) * imageScale + imageOffsetX) * expectedWidth + containerOffsetX;
+  // Combine the static alliance offset with the dynamic defense offset.
+  // This now perfectly mirrors the logic used by the canvas `drawImage` call.
+  const baseImageOffsetX = imageOffsetXGlobal(isBlue);
+  const dynamicDefenseOffset = getDefenseOffset(isBlue, isDefending);
+  const totalImageOffsetX = baseImageOffsetX + dynamicDefenseOffset;
+
+  // Use the combined total offset in the final scaling calculation.
+  const scaledX = ((topLeftX / FIELD_VIRTUAL_WIDTH) * imageScaleGlobal + totalImageOffsetX) * expectedWidth + containerOffsetX;
   const scaledY = (topLeftY / FIELD_VIRTUAL_HEIGHT) * actualHeight;
 
-  const scaledWidth = (width / FIELD_VIRTUAL_WIDTH) * expectedWidth * imageScale;
+  // --- END OF THE FIX ---
+
+  const scaledWidth = (width / FIELD_VIRTUAL_WIDTH) * expectedWidth * imageScaleGlobal;
   const scaledHeight = (height / FIELD_VIRTUAL_HEIGHT) * actualHeight;
 
   return { scaledX, scaledY, scaledWidth, scaledHeight };
 };
 
 const scaleToFieldCoordinates = (
-  x, y, actualWidth, actualHeight, perspective, isBlue
+  x, y, actualWidth, actualHeight, perspective, isBlue, isDefending = false
 ) => {
   const imageScale = imageScaleGlobal;
-  const imageOffsetX = imageOffsetXGlobal(isBlue);
   const expectedWidth = actualHeight * FIELD_ASPECT_RATIO;
   const containerOffsetX = Math.max((actualWidth - expectedWidth) / 2, 0);
 
-  // Un-apply pan/zoom to get a virtual percentage.
-  const virtualXPercent = ((x - containerOffsetX) / expectedWidth - imageOffsetX) / imageScale;
+  // --- START OF THE FIX ---
+  // We must account for the total offset when reversing the coordinates.
+
+  // 1. Calculate the total offset, just like in scaleCoordinates.
+  const baseImageOffsetX = imageOffsetXGlobal(isBlue);
+  const dynamicDefenseOffset = getDefenseOffset(isBlue, isDefending);
+  const totalImageOffsetX = baseImageOffsetX + dynamicDefenseOffset;
+
+  // 2. Remove the container offset and scale to get a percentage of the field image.
+  const virtualXPercentWithOffset = (x - containerOffsetX) / expectedWidth;
+  // 3. Remove the total image offset to get the true canonical percentage.
+  const virtualXPercent = (virtualXPercentWithOffset - totalImageOffsetX) / imageScale;
 
   let fieldX = Math.round(virtualXPercent * FIELD_VIRTUAL_WIDTH);
   let fieldY = Math.round((y / actualHeight) * FIELD_VIRTUAL_HEIGHT);
 
-  // --- START OF THE FIX ---
+  // --- END OF THE FIX ---
 
-  // 1. Determine the final state of the axes using the exact same rules.
+  // The rest of this logic correctly un-applies the flips.
   let flipX = false;
   let flipY = false;
 
@@ -136,15 +132,12 @@ const scaleToFieldCoordinates = (
     flipY = !flipY;
   }
 
-  // 2. Un-apply the final transformation state ONCE to get the canonical coordinate.
   if (flipX) {
     fieldX = FIELD_VIRTUAL_WIDTH - fieldX;
   }
   if (flipY) {
     fieldY = FIELD_VIRTUAL_HEIGHT - fieldY;
   }
-
-  // --- END OF THE FIX ---
 
   return { fieldX, fieldY };
 };
@@ -184,7 +177,6 @@ const FieldLocalComponent = ({
 
 // ===================================================================================
 // HOW IT WORKS, PART 2: The Canvas Drawing Effect
-// This component now correctly redraws itself when the alliance color changes.
 // ===================================================================================
 const FieldCanvas = forwardRef(
   ({ children, onClick, height, perspective, strokes, match }, ref) => {
@@ -193,7 +185,6 @@ const FieldCanvas = forwardRef(
     const [cursorCoordinates, setCursorCoordinates] = useState(null);
     const canvasRef = useRef(null);
 
-    // Line 1: The alliance color is determined on every render.
     const isBlue = new URLSearchParams(window.location.search).get('station')?.startsWith('b');
     const isNear = new URLSearchParams(window.location.search).get('perspective')?.startsWith('n');
 
@@ -204,8 +195,6 @@ const FieldCanvas = forwardRef(
 
     useLayoutEffect(() => { setCanvasSize({ width: height * FIELD_ASPECT_RATIO, height: height }); }, [height]);
 
-    // Line 2: The main drawing logic.
-    // REPLACE the entire useEffect hook inside your FieldCanvas component with this one.
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -213,41 +202,33 @@ const FieldCanvas = forwardRef(
       const image = new Image();
       image.src = fullField;
 
-      const defenseOffset = getDefenseOffset(isBlue, match.isDefending());
+      // This logic is the "ground truth" we are matching.
+      const defenseOffset = getDefenseOffset(isBlue, match?.isDefending());
+      const totalImageOffsetX = imageOffsetXGlobal(isBlue) + defenseOffset;
 
       image.onload = () => {
-        // 1. CRITICAL: Save the default, unflipped state of the canvas.
         ctx.save();
-
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 2. The Visual 180° Rotation:
         if (isScoringTableFar(perspective)) {
-          // Move the canvas's origin point (0,0) to the bottom-right corner.
           ctx.translate(canvas.width * 0.62, canvas.height);
-          // Flip both the X and Y axes.
           ctx.scale(-1, -1);
         }
 
-        // 3. Draw the Image: This call is now "dumb". It draws onto whatever the current
-        // context is (flipped or not), making the image appear correctly rotated.
         ctx.drawImage(
-          image, //image
-          canvas.width * imageOffsetXGlobal(isBlue) + defenseOffset * canvas.width * imageScaleGlobal, //x starting point
-          0, //y starting point
-          canvas.width * imageScaleGlobal, //width
-          canvas.height //height
+          image,
+          canvas.width * totalImageOffsetX, // Use the combined offset
+          0,
+          canvas.width * imageScaleGlobal,
+          canvas.height
         );
 
-        // 4. CRITICAL: Restore the canvas to its original, unflipped state.
-        // This prevents the flip from affecting other drawings or the next render cycle.
         ctx.restore();
 
         if (strokes && strokes.length > 0) {
           // Stroke logic would go here.
         }
       };
-      // 5. Add `perspective` to the dependency array so this effect re-runs when it changes.
     }, [canvasSize, perspective, strokes, isBlue, match?.isDefending()]);
 
     const handleMouseInteraction = (event, isClick = false) => {
@@ -257,7 +238,8 @@ const FieldCanvas = forwardRef(
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      const coords = scaleToFieldCoordinates(x, y, canvas.width, canvas.height, perspective, isBlue);
+      // Pass the defense state so coordinates can be calculated correctly.
+      const coords = scaleToFieldCoordinates(x, y, canvas.width, canvas.height, perspective, isBlue, match?.isDefending());
 
       if (isClick && onClick != null) {
         onClick(coords.fieldX, coords.fieldY);

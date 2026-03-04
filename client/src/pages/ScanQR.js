@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { getScoutMatch, submitMatch } from "../requests/ApiRequests";
 import { getSignedInUser } from "../TokenUtils.js";
 import AppAlert from "./Common/AppAlert.js";
+import { decompressData } from "./Common/Constants.js";
 
 const ScanQR = () => {
     const navigate = useNavigate();
@@ -132,7 +133,7 @@ const ScanQR = () => {
     const tryParse = async (str) => {
         try {
             console.log("str", str);
-            const json = JSON.parse(str);
+            const json = decompressData(JSON.parse(str));
             showAlert("Getting match data (report ID and Robot");
             const res = await getScoutMatch({
                 eventKey: json.eventKey, 
