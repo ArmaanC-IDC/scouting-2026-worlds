@@ -331,6 +331,7 @@ const ScoutMatch = () => {
 
   let fetching = false;
   const fetchScoutMatchData = async () => {
+    if (scoutData?.teamNumber) return ;
     if (fetching || !eventKey || !driverStation || !matchKey || !navigator.onLine) { return; }
     try {
       fetching = true;

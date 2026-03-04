@@ -55,13 +55,13 @@ const scaleCoordinates = (
   let flipX = false;
   let flipY = false;
 
-  if (isScoringTableFar(perspective)) {
-    fieldX = SCREEN_FIELD_VIRTUAL_WIDTH - fieldX;
-    flipY = !flipY;
-  }
+  // if (isScoringTableFar(perspective)) {
+  //   fieldX = SCREEN_FIELD_VIRTUAL_WIDTH - fieldX;
+  //   flipY = !flipY;
+  // }
   if (isBlue) {
     flipX = !flipX;
-    flipY = !flipY;
+    // flipY = !flipY;
   }
 
   // Apply the final flip state ONCE to the canonical coordinates.
@@ -123,13 +123,13 @@ const scaleToFieldCoordinates = (
   let flipX = false;
   let flipY = false;
 
-  if (isScoringTableFar(perspective)) {
-    fieldX = SCREEN_FIELD_VIRTUAL_WIDTH - fieldX;
-    flipY = !flipY;
-  }
+  // if (isScoringTableFar(perspective)) {
+  //   fieldX = SCREEN_FIELD_VIRTUAL_WIDTH - fieldX;
+  //   flipY = !flipY;
+  // }
   if (isBlue) {
     flipX = !flipX;
-    flipY = !flipY;
+    // flipY = !flipY;
   }
 
   if (flipX) {
