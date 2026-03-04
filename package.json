@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "concurrently": "^9.0.1",
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.14"
   },
   "overrides": {
     "react-scripts": {
@@ -19,5 +19,10 @@
       "typescript": "4.9.5",
       "postcss": "8.4.38"
     }
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1"
   }
 }

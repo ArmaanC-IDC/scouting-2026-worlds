@@ -7,6 +7,8 @@ import {
 } from "./Constants";
 import { saveMatch } from "../../storage/MatchStorageManager";
 import { useNavigate } from "react-router-dom";
+import { BinaryDTO } from "../../storage/BinaryDTO";
+import { MATCH_SCHEMA } from "../../storage/ScoutingSchema";
 
 const exists = (val) => {
   return val !== null && val !== undefined
@@ -216,31 +218,47 @@ export const SIDEBAR_CONFIG = [
 
     label: () => "Submit Match (QR)",
 
-    onClick: (match) => {
-
-      const matchData = {
+onClick: (match) => {
+      // 1. Prepare the data to match your Binary Schema exactly
+      const matchToPack = {
+        schemaVersion: 1, 
         reportId: match.scoutData.reportId,
-        matchStartTime: match.matchStartTime,
         robot: match.scoutData.teamNumber,
         scoutId: match.userToken.id,
-        scoutName: match.userToken.username,
-        cycles: match.cycles.map(c => [CYCLE_TYPES.SNOWBALL, CYCLE_TYPES.SHOOTING].includes(c.type) ? 
-          {...c, rate: match.endgame[c.type===CYCLE_TYPES.SNOWBALL ? "snowballRate" : "shotRate"]}
-          : c
-        ),
-        endgame: match.endgame,
+        
+        // Flatten endgame for the binary map
+        endgame_hangLevel: match.endgame.location || 0,
+        endgame_snowballRate: match.endgame.snowballRate || 0,
+        endgame_shotRate: match.endgame.shotRate || 0,
+        
+        // Process cycles into the binary-friendly format
+        cycles: match.cycles.map(c => ({
+          type: c.type,
+          success: !!c.success,
+          location: c.location || 0,
+          pinCount: c.pinCount || 0,
+          foulCount: c.foulCount || 0,
+          rate: [CYCLE_TYPES.SNOWBALL, CYCLE_TYPES.SHOOTING].includes(c.type) 
+                ? match.endgame[c.type === CYCLE_TYPES.SNOWBALL ? "snowballRate" : "shotRate"] 
+                : 0
+        }))
       };
-      const params = Object.fromEntries(match.searchParams);
 
-      console.log("matchData", matchData);
-      console.log(params);
-
+      // 2. Use the packer on 'matchToPack'
+      const packer = new BinaryDTO(MATCH_SCHEMA);
+      const qrPayload = packer.pack(matchToPack); 
+    
+      // 3. Use the variables existing on the 'match' object
       saveMatch(
-        { ...matchData, ...params },
-        match.searchParams,
-        match.userToken,
-        false // submitAfter = false → QR MODE
+        matchToPack,         // data to save locally
+        match.searchParams,  // searchParams from match object
+        match.userToken,     // userToken from match object
+        false,               // submitAfter = false (Trigger QR)
+        null,                // no callback needed for QR
+        qrPayload            // the binary string
       );
+
+      console.log(`Packed! Shrunk by ~${Math.round(100 - (qrPayload.length / JSON.stringify(matchToPack).length * 100))}%`);
     },
 
     color: () => COLORS.INFO,
