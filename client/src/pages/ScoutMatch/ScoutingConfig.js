@@ -70,8 +70,8 @@ export const SCOUTING_CONFIG = {
 
   HUB: {
     phases: [PHASES.AUTO, PHASES.TELE],
-    positions: { CLOSE: [755, 800], FAR: [455, 1250] },
-    dimensions: { width: 800, height: 300 },
+    positions: { CLOSE: [855, 800], FAR: [455, 1250] },
+    dimensions: { width: 600, height: 300 },
     textFunction: (match, key) => key,
     color: COLORS.SHOOT,
     fontSize: 90,
@@ -96,9 +96,9 @@ export const SCOUTING_CONFIG = {
 
   TOWER: {
     phases: [PHASES.AUTO, PHASES.TELE],
-    positions: { TOWER: [180, 800] },
-    dimensions: { width: 300, height: 300 },
-    textFunction: (match, key) => "",
+    positions: { TOWER: [300, 800] },
+    dimensions: { width: 500, height: 300 },
+    textFunction: (match, key) => "HANG",
     color: COLORS.HANG_DEFENSE,
     onClick: (match, key) => {
       match.setActiveCycle({
@@ -117,9 +117,9 @@ export const SCOUTING_CONFIG = {
   DEPOT_INTAKE: {
     phases: [PHASES.AUTO, PHASES.TELE],
     // Replace with your desired coordinates
-    positions: { DEPOT: [500, 525] },
-    dimensions: { width: 600, height: 200 },
-    textFunction: (match, key) => match.phase === PHASES.AUTO ? "Depot Intake" : "Alliance Zone",
+    positions: { DEPOT: [500, 518] },
+    dimensions: { width: 700, height: 250 },
+    textFunction: (match, key) => "Alliance Zone Intake",
     showFunction: (match, key) => !match.isDefending(), // Hide when defending
     color: COLORS.INTAKE, // Using the color from Constants.js
     fontSize: 71,
@@ -128,9 +128,9 @@ export const SCOUTING_CONFIG = {
       match.setActiveCycle({
         type: CYCLE_TYPES.INTAKE,
         phase: match.phase,
-        location: match.phase === PHASES.AUTO ? key : "ALLIANCE_ZONE", // Will be "DEPOT"
+        location: "ALLIANCE_ZONE", // Will be "DEPOT"
         startTime: match.getCurrentTime(),
-      }, `Start Intake (${match.phase === PHASES.AUTO ? key : "ALLIANCE ZONE"}) Cycle`);
+      }, `Start Intake (${"ALLIANCE ZONE"}) Cycle`);
     },
     isSelected: (match, key) =>
       match.activeCycle?.type === CYCLE_TYPES.INTAKE && match.activeCycle?.location === (match.phase === PHASES.AUTO ? key : "ALLIANCE_ZONE"),
@@ -163,11 +163,11 @@ export const SCOUTING_CONFIG = {
   SNOWBALL: {
     phases: [PHASES.AUTO, PHASES.TELE],
     // Replace with your desired coordinates
-    positions: { DEPOT: [500, 235], NEUTRAL_ZONE: [1650, 800] },
+    positions: { ALLIANCE_ZONE: [500, 235], NEUTRAL_ZONE: [1650, 800] },
     dimensions: { width: 800, height: 300 },
-    textFunction: (match, key) => "SNOWBALL",
+    textFunction: (match, key) => "FEED/BYPASS",
     color: COLORS.SHOOT, // Using a primary/active color
-    showFunction: (match, key) => key === "DEPOT" ? !match.isDefending() : match.isDefending(),
+    showFunction: (match, key) => key === "ALLIANCE_ZONE" ? !match.isDefending() : match.isDefending(),
     fontSize: 90,
     onClick: (match, key) => {
       match.setActiveCycle({
@@ -175,7 +175,7 @@ export const SCOUTING_CONFIG = {
         phase: match.phase,
         location: key,
         startTime: match.getCurrentTime(),
-      }, `Start Snowball (${key}) Cycle`);
+      }, `Start Feed/Bypass (${key}) Cycle`);
     },
     isSelected: (match, key) =>
       match.activeCycle?.type === CYCLE_TYPES.SNOWBALL && match.activeCycle?.location === key,
@@ -445,7 +445,7 @@ export const ENDGAME_CONFIG = [
   {
     id: "snowballRate",
     type: "TOGGLE",
-    label: "Snowball Rate",
+    label: "Bypass Rate",
 
     fieldX: 1500,
     fieldY: 1350,

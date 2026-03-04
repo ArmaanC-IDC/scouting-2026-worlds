@@ -718,6 +718,7 @@ const ScoutMatch = () => {
                     value={match.endgame.comments || ""}
                     onChange={(e) => match.setEndgame({ comments: e.target.value })}
                     style={{ width: "100%", height: "100%", fontSize: scaleWidthToActual(40) + "px", padding: "10px" }}
+                    placeholder="Can shoot while moving? Go through trench/bump well? Spills balls? Avoids defense?"
                   />
                 </Box>
               </Box>
