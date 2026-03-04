@@ -240,7 +240,16 @@ const ScoutMatch = () => {
     defenseCycle: {}, //type, phase, startTime, endTime
 
     // endgame: { disabled: false, driverSkill: "N/A", defenseSkill: "N/A", role: "N/A", comments: "" },
-    endgame: { disabled: "No", driverSkill: "N/A", defenseSkill: "N/A", roles: [], comments: "" },
+    endgame: { 
+      disabled: "No", 
+      driverSkill: "N/A", 
+      defenseSkill: "N/A", 
+      roles: [], 
+      comments: "",
+      shotRate: 0,
+      snowballRate: 0,
+      accuracy: 90,
+    },
   };
 
   const { state, setState, undo, redo, canUndo, canRedo, reset, lastUndoMessage, redoMessage } = useHistoryState(initialMatchData);
@@ -478,7 +487,7 @@ const ScoutMatch = () => {
               fieldX={fieldX} fieldY={fieldY} fieldWidth={fieldWidth} fieldHeight={fieldHeight}
               perspective={scoutPerspective}
               isDefending={match.isDefending()}
-              sx={{ pointerEvents: noPointerEvents ? "none" : "auto" }}
+              sx={{ pointerEvents: noPointerEvents ? "none" : "auto", }}
               flip={!dontFlip}
             >
               {componentFunction(match)}
@@ -607,6 +616,7 @@ const ScoutMatch = () => {
 
           if (field.type === "TOGGLE" || field.type === "SCALE") {
             const options = field.options || ["N/A", ...Array.from({ length: field.max - field.min + 1 }, (_, i) => i + field.min)];
+            const values = field.values || ["N/A", ...Array.from({ length: field.max - field.min + 1 }, (_, i) => i + field.min)];
             const row = (
               <Box sx={{
                 position: "absolute", left: scaleWidthToActual(field.rowParams?.x || 0 + field.labelParams?.width), top: scaleHeightToActual(field.rowParams?.y + field.labelParams?.height || 50 + field.labelParams?.height),
@@ -617,8 +627,8 @@ const ScoutMatch = () => {
                   <Box key={idx} sx={{ flex: 1 }}>
                     <FieldButton
                       color={COLORS.PENDING}
-                      onClick={() => match.setEndgame({ [field.id]: opt })}
-                      drawBorder={match.endgame[field.id] == opt}
+                      onClick={() => match.setEndgame({ [field.id]: values[idx] })}
+                      drawBorder={match.endgame[field.id] == values[idx]}
                     >{opt}</FieldButton>
                   </Box>
                 ))}
@@ -697,7 +707,7 @@ const ScoutMatch = () => {
 
           if (field.type === "TEXT_AREA") {
             return (
-              <>
+              <Box>
                 {label}
                 <Box sx={{
                   position: "absolute", left: scaleWidthToActual(field.textParams?.x || 0), top: scaleHeightToActual(field.textParams?.y || 100),
@@ -710,7 +720,7 @@ const ScoutMatch = () => {
                     style={{ width: "100%", height: "100%", fontSize: scaleWidthToActual(40) + "px", padding: "10px" }}
                   />
                 </Box>
-              </>
+              </Box>
             );
           }
           return null;

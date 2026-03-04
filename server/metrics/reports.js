@@ -25,8 +25,6 @@ export const calculateReportTotals = (report) => {
   // Default per-phase structure
   const DEFAULT_PHASE_STRUCTURE = {
     fuel: {
-      attainedCount: 0,
-      shotCount: 0,
       shotRateSum: 0,
       numShotCycles: 0,
       snowballRateSum: 0,
@@ -45,6 +43,7 @@ export const calculateReportTotals = (report) => {
   // Initialize results
   const results = {
     disabled: 0,
+    accuracy: "Low",
     // keep same post-match fields (if present on report object)
     driverSkill: report.driverSkill ?? "N/A",
     defenseSkill: report.defenseSkill ?? "N/A",
@@ -79,6 +78,7 @@ export const calculateReportTotals = (report) => {
 
   // Keep disabled value
   results.disabled += Number(report.disabled ?? 0);
+  results.accuracy = report.accuracy || "Low";
 
   // Guard: if no cycles, return early (but still return base structure)
   if (!Array.isArray(report.cycles) || report.cycles.length === 0) {
@@ -123,33 +123,27 @@ export const calculateReportTotals = (report) => {
       case "SNOWBALL":
       case "INTAKE": {
         // Calculate count using rate * duration if available
-        let count = 1;
         const rate = cycle.rate || 0;
 
         // If rate is provided (items/sec) and we have a duration, calculate total items
         if (rate > 0 && startTime !== null && endTime !== null) {
           const duration = endTime - startTime;
-          count = Math.max(1, Math.round((rate * duration) / 1000));
         }
 
         console.log("abcde", rate, phaseResults.fuel.shotRateSum);
 
         // Intake -> Attained
         if (cycleType === "INTAKE") {
-          phaseResults.fuel.attainedCount += count;
           phaseResults.fuel.intakingTime += cycleTime;
         }
         // Shoot -> Shot (Score)
         else if (cycleType === "SHOOT") {
-          phaseResults.fuel.shotCount += count;
           phaseResults.fuel.numShotCycles += 1;
           phaseResults.fuel.shotRateSum += rate;
           phaseResults.fuel.shootingTime += cycleTime;
         }
         // Snowball -> Feed
         else if (cycleType === "SNOWBALL") {
-          phaseResults.fuel.attainedCount += count;
-          phaseResults.fuel.shotCount += count;
           phaseResults.fuel.numSnowballCycles += 1;
           phaseResults.fuel.snowballRateSum += rate;
           phaseResults.fuel.snowballingTime += cycleTime;
@@ -215,11 +209,13 @@ export const calculateAverageMetrics = (reports) => {
 
   // disabled: average over numeric values, excluding zeros
   let disabledSum = 0;
+  let accuracySum = 0;
   reports.forEach((r) => {
     // MODIFIED: Added '&& r.totals.disabled !== 0' to ignore zero values
     if (r.totals && typeof r.totals.disabled === "number" && r.totals.disabled !== 0) {
       console.log("disabled", r.totals.disabled);
       disabledSum += { No: 0, Yes: 1, Partially: 0.5 }[r.totals.disabled];
+      accuracySum += { Low: 40, Med: 60, High: 80, Perfect: 100 }[r.totals.accuracy]
     }
     console.log("report", r);
   });
@@ -257,6 +253,9 @@ export const calculateAverageMetrics = (reports) => {
 
   averageMetrics.auto = accumulatePhase("auto");
   averageMetrics.tele = accumulatePhase("tele");
+
+  averageMetrics.tele.fuel.accuracy = accuracySum / reports.length;
+  averageMetrics.auto.fuel.accuracy = accuracySum / reports.length;
 
   return averageMetrics;
 };

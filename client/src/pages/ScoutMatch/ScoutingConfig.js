@@ -303,8 +303,8 @@ export const ENDGAME_CONFIG = [
     type: "SCALE",
     label: "Driver Skill",
 
-    fieldX: 700,
-    fieldY: 200,
+    fieldX: 650,
+    fieldY: 150,
     width: 1200,
     height: 200,
 
@@ -328,13 +328,38 @@ export const ENDGAME_CONFIG = [
     type: "SCALE",
     label: "Defense Skill",
 
-    fieldX: 700,
-    fieldY: 700,
+    fieldX: 650,
+    fieldY: 550,
     width: 1200,
     height: 200,
 
     min: 0,
     max: 5,
+
+    labelParams: {
+      height: 150
+    },
+
+    rowParams: {
+      gap: 5
+    }
+  },
+
+  // --------------------
+  // ACCURACY
+  // --------------------
+  {
+    id: "accuracy",
+    type: "TOGGLE",
+    label: "Accuracy",
+
+    fieldX: 650,
+    fieldY: 950,
+    width: 1200,
+    height: 200,
+
+    options: ["Low", "Med", "High", "Perfect"],
+    values: ["Low", "Med", "High", "Perfect"],
 
     labelParams: {
       height: 150
@@ -353,12 +378,13 @@ export const ENDGAME_CONFIG = [
     type: "TOGGLE",
     label: "Disabled?",
 
-    fieldX: 1600,
-    fieldY: 200,
-    width: 1300,
+    fieldX: 1500,
+    fieldY: 150,
+    width: 1200,
     height: 200,
 
-    options: ["No", "Partially", "Yes"],
+    options: ["No", "Yes"],
+    values: ["No", "Yes"],
 
     labelParams: {
       height: 150
@@ -378,12 +404,56 @@ export const ENDGAME_CONFIG = [
     type: "OPTIONS",
     label: "Robot Roles",
 
-    fieldX: 800,
-    fieldY: 1200,
-    width: 1400,
+    fieldX: 1500,
+    fieldY: 550,
+    width: 1200,
     height: 200,
 
     options: ["Cycle", "Defense", "Feed", "Steal"],
+
+    labelParams: {
+      height: 150
+    },
+
+    rowParams: {
+      gap: 5
+    }
+  },
+
+  {
+    id: "shotRate",
+    type: "TOGGLE",
+    label: "Shot Rate",
+
+    fieldX: 1500,
+    fieldY: 950,
+    width: 1200,
+    height: 200,
+
+    options: ["0-2/s", "2-4/s", "4-8/s", "8+"],
+    values: [1, 3, 6, 9],
+
+    labelParams: {
+      height: 150
+    },
+
+    rowParams: {
+      gap: 5
+    }
+  },
+
+  {
+    id: "snowballRate",
+    type: "TOGGLE",
+    label: "Snowball Rate",
+
+    fieldX: 1500,
+    fieldY: 1350,
+    width: 1200,
+    height: 200,
+
+    options: ["0-2/s", "2-4/s", "4-8/s", "8+"],
+    values: [1, 3, 6, 9],
 
     labelParams: {
       height: 150
@@ -402,10 +472,10 @@ export const ENDGAME_CONFIG = [
     type: "TEXT_AREA",
     label: "Comments",
 
-    fieldX: 1800,
-    fieldY: 1000,
-    width: 1250,
-    height: 750,
+    fieldX: 2050,
+    fieldY: 775,
+    width: 700,
+    height: 1450,
 
     labelParams: {
       height: 150
@@ -414,5 +484,5 @@ export const ENDGAME_CONFIG = [
     textParams: {
       y: 170
     }
-  }
+  },
 ]

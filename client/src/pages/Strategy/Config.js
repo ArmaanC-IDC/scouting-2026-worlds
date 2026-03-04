@@ -30,6 +30,14 @@ export const calculatedMetrics = {
             const result = getValue(submetric.shotRateSum) / getValue(submetric.numShotCycles);
 
             return Number.isFinite(result) ? result.toFixed(1) : "-";
+        },
+
+        shotCount: (submetric) => {
+            console.trace("calculated metric: shot count. Given: ", submetric);
+            const result = (getValue(submetric.shotRateSum) / getValue(submetric.numShotCycles)) * (getValue(submetric.shootingTime) / 1000);
+            console.log("shot count", submetric.numShotCycles, result);
+            
+            return Number.isFinite(result) ? result.toFixed(1) : "-"
         }
     }
 };
@@ -37,14 +45,14 @@ export const calculatedMetrics = {
 //what metrics are shown in summaries
 export const importantMetrics = {
     auto: {
-        fuel: ["shootingTime", "snowballingTime", "avgShotSpeed", "avgSnowballSpeed", "attainedCount", "shotCount",],
+        fuel: ["shootingTime", "snowballingTime", "avgShotSpeed", "avgSnowballSpeed", "accuracy", "shotCount"],
         hang: ["attempts", "cycleTime", "lOneRate"],
         movement: ["bumps", "movements", "trenches"],
         contact: ["foulCount", "pinCount", "totalTime"],
         defense: ["totalTime"],
     },
     tele: {
-        fuel: ["shootingTime", "snowballingTime", "avgShotSpeed", "avgSnowballSpeed", "shotCount",],
+        fuel: ["shootingTime", "snowballingTime", "avgShotSpeed", "avgSnowballSpeed", "accuracy", "shotCount"],
         hang: ["attempts", "cycleTime", "lOneRate", "lTwoRate", "lThreeRate"],
         movement: ["bumps", "trenches"],
         contact: ["foulCount", "pinCount", "totalTime"],
@@ -55,12 +63,12 @@ export const importantMetrics = {
 //what metrics are visible (for individual reports)
 export const visibleMetrics = {
     auto: {
-        fuel: ["shootingTime", "snowballingTime", "intakingTime", "avgShotSpeed", "avgSnowballSpeed", "shotCount", "numShotCycles", "numSnowballCycles"],
+        fuel: ["shootingTime", "snowballingTime", "intakingTime", "avgShotSpeed", "avgSnowballSpeed", "accuracy", "shotCount", "numShotCycles", "numSnowballCycles"],
         hang: ["attempts", "cycleTime", "avgHangPoints", "lOneRate"],
         movement: ["bumps", "movements", "trenches"],
     },
     tele: {
-        fuel: ["shootingTime", "snowballingTime", "intakingTime", "avgShotSpeed", "avgSnowballSpeed", "shotCount", "numShotCycles", "numSnowballCycles"],
+        fuel: ["shootingTime", "snowballingTime", "intakingTime", "avgShotSpeed", "avgSnowballSpeed", "accuracy", "shotCount", "numShotCycles", "numSnowballCycles"],
         hang: ["attempts", "cycleTime", "lOneRate", "lTwoRate", "lThreeRate"],
         contact: ["foulCount", "pinCount", "totalTime"],
         movement: ["bumps", "trenches"],

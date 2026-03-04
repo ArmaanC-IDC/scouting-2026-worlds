@@ -42,8 +42,10 @@ const formatValue = (value, key) => {
   if (typeof v === "number") {
     if (v === 0) return "-";
     if (key.toLowerCase().includes("time")) return (v / 1000).toFixed(1) + "s";
-    if (key.toLowerCase().includes("rate") || key.toLowerCase().includes("accuracy"))
+    if (key.toLowerCase().includes("rate"))
       return (v * 100).toFixed(1) + "%";
+    if (key.toLowerCase().includes("accuracy"))
+      return v.toFixed(1) + "%"
     return v.toFixed(1);
   }
   if (typeof v === "object") return JSON.stringify(v);

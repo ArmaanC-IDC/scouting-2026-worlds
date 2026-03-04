@@ -48,6 +48,7 @@ export const SIDEBAR_CONFIG = [
       match.setActiveCycle({
         ...match.activeCycle,
         endTime: match.getCurrentTime(),
+        rate: 1,
       }, `Stop ${match.activeCycle.type.toLowerCase()}ing`);
     }
   },
@@ -66,23 +67,6 @@ export const SIDEBAR_CONFIG = [
         endTime: match.getCurrentTime(),
         rate: 1
       }, `Stop Intaking`);
-    }
-  },
-
-  // ------------ CYCLE/INTAKE/SNOWBALLING Rate --------------
-  {
-    phases: [PHASES.AUTO, PHASES.TELE],
-    id: "stopCycleIntakeSnowball",
-    positions: Object.keys(BPS_RANGES),
-    flexWeight: 2,
-    label: (match, key) => BPS_RANGES[key].label,
-    show: (match, key) => exists(match.activeCycle.endTime) && !exists(match.activeCycle.rate) &&
-      ([CYCLE_TYPES.INTAKE, CYCLE_TYPES.SHOOTING, CYCLE_TYPES.SNOWBALL].includes(match.activeCycle.type)),
-    onClick: (match, key) => {
-      match.setActiveCycle({
-        ...match.activeCycle,
-        rate: BPS_RANGES[key].value,
-      }, `Set ${match.activeCycle.type.toLowerCase()} Rate`);
     }
   },
 
@@ -195,7 +179,10 @@ export const SIDEBAR_CONFIG = [
           robot: match.scoutData.teamNumber,
           scoutId: match.userToken.id,
           scoutName: match.userToken.username,
-          cycles: match.cycles,
+          cycles: match.cycles.map(c => [CYCLE_TYPES.SNOWBALL, CYCLE_TYPES.SHOOTING].includes(c.type) ? 
+            {...c, rate: match.endgame[c.type===CYCLE_TYPES.SNOWBALL ? "snowballRate" : "shotRate"]}
+            : c
+          ),
           endgame: match.endgame,
         },
         match.searchParams,
@@ -237,7 +224,10 @@ export const SIDEBAR_CONFIG = [
         robot: match.scoutData.teamNumber,
         scoutId: match.userToken.id,
         scoutName: match.userToken.username,
-        cycles: match.cycles,
+        cycles: match.cycles.map(c => [CYCLE_TYPES.SNOWBALL, CYCLE_TYPES.SHOOTING].includes(c.type) ? 
+          {...c, rate: match.endgame[c.type===CYCLE_TYPES.SNOWBALL ? "snowballRate" : "shotRate"]}
+          : c
+        ),
         endgame: match.endgame,
       };
       const params = Object.fromEntries(match.searchParams);

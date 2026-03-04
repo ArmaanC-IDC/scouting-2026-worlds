@@ -59,8 +59,10 @@ const formatValue = (value, key, roundingCount) => {
   if (typeof v === "number") {
     if (v === 0 && !key.toLowerCase().includes("count")) return "-";
     if (key.toLowerCase().includes("time")) return (v / 1000).toFixed(1) + "s";
-    if (key.toLowerCase().includes("rate") || key.toLowerCase().includes("accuracy"))
+    if (key.toLowerCase().includes("rate"))
       return (v * 100).toFixed(roundingCount) + "%";
+    if (key.toLowerCase().includes("accuracy"))
+      return v.toFixed(roundingCount) + "%"
     return v.toFixed(roundingCount);
   }
   if (typeof v === "object") return JSON.stringify(v);
