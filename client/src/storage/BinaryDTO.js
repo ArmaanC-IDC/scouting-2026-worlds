@@ -1,8 +1,3 @@
-/**
- * BinaryDTO: A Schema-based Binary Serializer for FRC Scouting
- * Optimized for QR Code density and iPhone 7/8 camera sensors.
- */
-
 const BASE45_CHARSET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
 
 export class BinaryDTO {
@@ -10,23 +5,14 @@ export class BinaryDTO {
     this.schema = schema;
   }
 
-  /**
-   * Encodes a JS Object into a Base45 string based on the schema.
-   */
   pack(jsObject) {
     const bytes = [];
-
     this.schema.forEach((field) => {
-      const value = jsObject[field.key];
-      this._serializeField(field, value, bytes);
+      this._serializeField(field, jsObject[field.key], bytes);
     });
-
     return this._toBase45(new Uint8Array(bytes));
   }
 
-  /**
-   * Decodes a Base45 string back into a JS Object.
-   */
   unpack(base45String) {
     const bytes = this._fromBase45(base45String);
     const result = {};
@@ -44,8 +30,6 @@ export class BinaryDTO {
     return result;
   }
 
-  // --- Internal Serialization Logic ---
-
   _serializeField(field, value, bytes) {
     if (field.type === "uint16") {
       bytes.push((value >> 8) & 0xff, value & 0xff);
@@ -54,8 +38,13 @@ export class BinaryDTO {
       bytes.push((val === -1 ? 0 : val) & 0xff);
     } else if (field.type === "bool") {
       bytes.push(value ? 1 : 0);
+    } else if (field.type === "string") {
+      const str = String(value || "");
+      bytes.push(Math.min(str.length, 255)); // Length prefix
+      for (let i = 0; i < Math.min(str.length, 255); i++) {
+        bytes.push(str.charCodeAt(i) & 0xff);
+      }
     } else if (field.type === "array") {
-      // First byte is the length of the array
       const arr = value || [];
       bytes.push(arr.length & 0xff);
       arr.forEach((item) => {
@@ -67,19 +56,24 @@ export class BinaryDTO {
   }
 
   _deserializeField(field, bytes, offset) {
-    let value;
-    let newOffset = offset;
-
+    let value, newOffset = offset;
     if (field.type === "uint16") {
       value = (bytes[offset] << 8) | bytes[offset + 1];
       newOffset += 2;
     } else if (field.type === "uint8") {
-      const raw = bytes[offset];
-      value = field.map ? field.map[raw] : raw;
+      value = field.map ? field.map[bytes[offset]] : bytes[offset];
       newOffset += 1;
     } else if (field.type === "bool") {
       value = bytes[offset] === 1;
       newOffset += 1;
+    } else if (field.type === "string") {
+      const len = bytes[offset];
+      newOffset += 1;
+      value = "";
+      for (let i = 0; i < len; i++) {
+        value += String.fromCharCode(bytes[newOffset + i]);
+      }
+      newOffset += len;
     } else if (field.type === "array") {
       const count = bytes[offset];
       newOffset += 1;
@@ -96,7 +90,6 @@ export class BinaryDTO {
     }
     return { value, newOffset };
   }
-
   // --- Base45 Encoding/Decoding ---
 
   _toBase45(uint8Array) {
@@ -116,12 +109,18 @@ export class BinaryDTO {
   _fromBase45(str) {
     const output = [];
     for (let i = 0; i < str.length; i += 3) {
-      const isShort = str.length - i === 2;
-      let x = BASE45_CHARSET.indexOf(str[i]) + 
-              BASE45_CHARSET.indexOf(str[i + 1]) * 45 + 
-              (isShort ? 0 : BASE45_CHARSET.indexOf(str[i + 2]) * 2025);
-      if (isShort) output.push(x);
-      else output.push((x >> 8) & 0xff, x & 0xff);
+      const remaining = str.length - i;
+      let x = BASE45_CHARSET.indexOf(str[i]) +
+        BASE45_CHARSET.indexOf(str[i + 1]) * 45;
+
+      if (remaining >= 3) {
+        x += BASE45_CHARSET.indexOf(str[i + 2]) * 2025;
+        output.push((x >> 8) & 0xff);
+        output.push(x & 0xff);
+      } else {
+        // Short group (last byte)
+        output.push(x & 0xff);
+      }
     }
     return new Uint8Array(output);
   }

@@ -1,3 +1,4 @@
+import LZString from "lz-string";
 import { BinaryDTO } from "../../storage/BinaryDTO";
 import { saveMatch } from "../../storage/MatchStorageManager";
 import { MATCH_SCHEMA, prepareMatchForDTO } from "../../storage/ScoutingSchema";
@@ -220,6 +221,7 @@ export const SIDEBAR_CONFIG = [
       // 2. Pack it using the Master Schema
       const packer = new BinaryDTO(MATCH_SCHEMA);
       const qrPayload = packer.pack(matchToPack);
+      const compressedPayload = LZString.compressToEncodedURIComponent(qrPayload);
 
       // 3. Save it
       saveMatch(
@@ -228,10 +230,11 @@ export const SIDEBAR_CONFIG = [
         match.userToken,
         false,
         null,
-        qrPayload
+        compressedPayload
       );
-
+      console.log(`Match: ${match}`);
       console.log(`Binary Payload: ${qrPayload}`);
+      console.log(`Compressed Payload: ${compressedPayload}`);
     },
     color: () => COLORS.INFO,
     show: () => true

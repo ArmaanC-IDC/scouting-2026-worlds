@@ -1,5 +1,6 @@
 import { Box, Button, Paper, Typography } from "@mui/material";
 import { Html5Qrcode } from "html5-qrcode";
+import LZString from 'lz-string';
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { submitMatch } from "../requests/ApiRequests";
@@ -67,21 +68,48 @@ const ScanQR = () => {
 
     const tryUnpack = (str) => {
         try {
-            // 1. Try Binary Unpacking first
-            const packer = new BinaryDTO(MATCH_SCHEMA);
-            const data = packer.unpack(str);
-            console.log("Successfully Unpacked Binary:", data);
+            // 1. First, try to decompress the LZ string 
+            // If it's not LZ compressed, this usually returns null or the original string
+            let workingStr = str;
+            try {
+                const decompressed = LZString.decompressFromEncodedURIComponent(str);
+                if (decompressed) workingStr = decompressed;
+            } catch (lzErr) {
+                console.log("Not LZ compressed, attempting raw unpack...");
+            }
+
+            // 2. Instantiate the DTO engine with our schema
+            const dto = new BinaryDTO(MATCH_SCHEMA);
+
+            // 3. Unpack the Base45 binary string
+            const data = dto.unpack(workingStr);
+
+            // 4. Reconstruct the Combined Match Key (e.g., "qm" + 4 = "qm4")
+            data.matchKey = `${data.matchType}${data.matchNumber}`;
+
+            // 5. Re-inflate the Seconds to Milliseconds for the database
+            data.cycles = (data.cycles || []).map(cycle => ({
+                ...cycle,
+                startTime: cycle.startTime * 1000,
+                endTime: (cycle.startTime + cycle.duration) * 1000,
+            }));
+
+            // 6. Cleanup internal-only keys used for binary efficiency
+            delete data.matchType;
+            delete data.matchNumber;
+
             setParsedData(data);
             showAlert(`Match ${data.matchKey} for Team ${data.robot} loaded!`);
+            console.log("Successfully Unpacked Binary:", data);
+
         } catch (e) {
-            // 2. Fallback: Check if it's a regular JSON string
+            // 7. Fallback: Check if it's a regular JSON string (for testing/legacy)
             try {
                 const data = JSON.parse(str);
-                console.log("Successfully Parsed JSON Fallback:", data);
                 setParsedData(data);
                 showAlert("Loaded via JSON Fallback.");
             } catch (jsonErr) {
-                console.error("Unpack Error:", e);
+                console.error("Critical Unpack Error:", e);
                 showAlert("Format Error: This QR code is not recognized.");
             }
         }
