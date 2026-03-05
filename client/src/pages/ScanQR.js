@@ -3,7 +3,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import LZString from 'lz-string';
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { submitMatch } from "../requests/ApiRequests";
+import { getScoutMatch, submitMatch } from "../requests/ApiRequests";
 import AppAlert from "./Common/AppAlert.js";
 
 // --- ADD THESE IMPORTS ---
@@ -66,7 +66,7 @@ const ScanQR = () => {
         return () => stopScanner();
     }, []);
 
-    const tryUnpack = (str) => {
+    const tryUnpack = async (str) => {
         try {
             // 1. First, try to decompress the LZ string 
             // If it's not LZ compressed, this usually returns null or the original string
@@ -98,9 +98,20 @@ const ScanQR = () => {
             delete data.matchType;
             delete data.matchNumber;
 
-            setParsedData(data);
-            showAlert(`Match ${data.matchKey} for Team ${data.robot} loaded!`);
             console.log("Successfully Unpacked Binary:", data);
+
+            showAlert("Getting match data (report ID and Robot");
+            const res = await getScoutMatch({
+                eventKey: data.eventKey, 
+                matchKey: data.matchKey, 
+                station: data.station
+            });
+            showAlert("Got match data");
+            const reportId = res.data.reportId;
+            const robot = res.data.teamNumber;
+
+            setParsedData({...data, reportId, robot});
+            showAlert(`Match ${data.matchKey} for Team ${data.robot} loaded!`);
 
         } catch (e) {
             // 7. Fallback: Check if it's a regular JSON string (for testing/legacy)
@@ -148,8 +159,8 @@ const ScanQR = () => {
                     <Box>
                         {parsedData ? (
                             <Box sx={{ textAlign: "left", bgcolor: "#111", p: 2, borderRadius: 2, mb: 2 }}>
-                                <Typography><strong>Robot:</strong> {parsedData.robot}</Typography>
-                                <Typography><strong>Report ID:</strong> {parsedData.reportId}</Typography>
+                                <Typography><strong>Robot:</strong> {parsedData.robot} ({parsedData.station})</Typography>
+                                <Typography><strong>Match:</strong> {parsedData.matchKey}</Typography>
                                 <Typography><strong>Cycles:</strong> {parsedData.cycles?.length || 0}</Typography>
                                 <Typography><strong>Hang:</strong> {parsedData.endgame_hangLevel}</Typography>
                             </Box>

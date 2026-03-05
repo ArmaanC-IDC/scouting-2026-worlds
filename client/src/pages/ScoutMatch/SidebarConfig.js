@@ -217,10 +217,12 @@ export const SIDEBAR_CONFIG = [
     onClick: (match) => {
       // 1. Use the helper function to clean the spaghetti
       const matchToPack = prepareMatchForDTO(match);
+      console.log("match", matchToPack);
 
       // 2. Pack it using the Master Schema
       const packer = new BinaryDTO(MATCH_SCHEMA);
       const qrPayload = packer.pack(matchToPack);
+      console.log("qrPayload", qrPayload);
       const compressedPayload = LZString.compressToEncodedURIComponent(qrPayload);
 
       // 3. Save it

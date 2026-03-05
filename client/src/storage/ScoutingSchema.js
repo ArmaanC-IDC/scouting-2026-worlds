@@ -1,9 +1,9 @@
 import { ATTENDING_EVENTS, CYCLE_TYPES, ENDGAME_ROLES, GAME_LOCATIONS, HANG_LEVELS, PHASES, PRACTICE_EVENTS } from "../pages/ScoutMatch/Constants";
 
 export const DTO_MAPS = {
-  events: ["NONE", ...Object.keys(ATTENDING_EVENTS), ...Object.keys(PRACTICE_EVENTS)],
-  stations: ["NONE", "r1", "r2", "r3", "b1", "b2", "b3"],
-  perspectives: ["NONE", "near", "far"],
+  eventKey: ["NONE", ...Object.keys(ATTENDING_EVENTS), ...Object.keys(PRACTICE_EVENTS)],
+  station: ["NONE", "r1", "r2", "r3", "b1", "b2", "b3"],
+  // perspectives: ["NONE", "near", "far"],
   accuracy: ["NONE", "Low", "Med", "High", "Perfect"],
   hangLevels: ["NONE", ...Object.keys(HANG_LEVELS)], // ["NONE", "LEVEL_1", "LEVEL_2", "LEVEL_3"]
   cycleTypes: ["NONE", ...Object.keys(CYCLE_TYPES)],
@@ -17,12 +17,12 @@ export const DTO_MAPS = {
 
 export const MATCH_SCHEMA = [
   { key: "schemaVersion", type: "uint8" },
-  { key: "eventKey", type: "uint8", map: DTO_MAPS.events },
+  { key: "eventKey", type: "uint8", map: DTO_MAPS.eventKey },
   { key: "matchType", type: "uint8", map: DTO_MAPS.matchTypes },
   { key: "matchNumber", type: "uint16" },
-  { key: "station", type: "uint8", map: DTO_MAPS.stations },
+  { key: "station", type: "uint8", map: DTO_MAPS.station },
   { key: "robot", type: "uint16" },
-  { key: "perspective", type: "uint8", map: DTO_MAPS.perspectives },
+  //{ key: "perspective", type: "uint8", map: DTO_MAPS.perspectives },
 
   // Endgame
   { key: "disabled", type: "uint8", map: DTO_MAPS.disabled },
@@ -52,19 +52,22 @@ export const MATCH_SCHEMA = [
 
 export const prepareMatchForDTO = (matchState) => {
   const fullKey = matchState.searchParams.get("matchKey") || "qm0";
+  console.log("ek", eventKey);
   const matchParts = fullKey.match(/([a-z]+)(\d+)/i) || ["qm0", "qm", "0"];
 
   // Note: matchState.state is where the "Spaghetti" lives
   const s = matchState.state;
 
+  console.log("matchState", matchState);
+
   return {
     schemaVersion: 1,
-    eventKey: matchState.eventKey || "NONE", // Pull from parent state
+    eventKey: matchState.searchParams.get("eventKey") || "NONE", // Pull from parent state
     matchType: matchParts[1].toLowerCase(),
     matchNumber: parseInt(matchParts[2]),
-    station: matchState.station || "NONE",
+    station: matchState.searchParams.get("station") || "NONE",
     robot: matchState.scoutData?.teamNumber || 0,
-    perspective: s.perspective || "near",
+    //perspective: s.perspective || "near",
 
     // Endgame fields (Matching your SCHEMA keys exactly)
     disabled: s.endgame?.disabled || "No",

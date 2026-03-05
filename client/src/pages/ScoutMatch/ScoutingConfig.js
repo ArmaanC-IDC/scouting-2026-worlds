@@ -358,8 +358,8 @@ export const ENDGAME_CONFIG = [
     width: 1200,
     height: 200,
 
-    options: ["Low", "Med", "High", "Perfect"],
-    values: ["Low", "Med", "High", "Perfect"],
+    options: ["Low", "Med", "High"],
+    values: ["Low", "Med", "High"],
 
     labelParams: {
       height: 150
