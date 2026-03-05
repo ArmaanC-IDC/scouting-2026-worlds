@@ -133,7 +133,8 @@ const ScanQR = () => {
     const tryParse = async (str) => {
         try {
             console.log("str", str);
-            const json = decompressData(JSON.parse(str));
+            let json = JSON.parse(str);
+            decompressData(json);
             showAlert("Getting match data (report ID and Robot");
             const res = await getScoutMatch({
                 eventKey: json.eventKey, 
@@ -147,6 +148,7 @@ const ScanQR = () => {
             console.log("parsed Data", {...json, reportId, robot});
             setParsedData({...json.matchData, reportId, robot});
         } catch (e) {
+            console.error(e);
             showAlert("Could not parse result", e);
         }
     }

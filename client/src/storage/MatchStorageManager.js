@@ -163,7 +163,9 @@ export const resyncAllMatches = async () => {
 
 export const showQRCodePopup = (matchData, searchParams) => {
   const { eventKey, matchKey, station } = Object.fromEntries(searchParams);
-  const jsonString = JSON.stringify(compressData({ eventKey, matchKey, station, matchData }));
+  let data = { eventKey, matchKey, station, matchData };
+  compressData(data);
+  const jsonString = JSON.stringify(data);
   const CHUNK_SIZE = 750; // Safe limit for dense QR codes
   const totalChunks = Math.ceil(jsonString.length / CHUNK_SIZE);
   const chunks = [];
@@ -176,6 +178,8 @@ export const showQRCodePopup = (matchData, searchParams) => {
     const header = totalChunks > 1 ? `P${i + 1}/${totalChunks}:` : "";
     chunks.push(header + chunkData);
   }
+
+  console.log("abcde", JSON.stringify(data));
 
   let currentIndex = 0;
 
