@@ -1,14 +1,12 @@
+import { BinaryDTO } from "../../storage/BinaryDTO";
+import { saveMatch } from "../../storage/MatchStorageManager";
+import { MATCH_SCHEMA, prepareMatchForDTO } from "../../storage/ScoutingSchema";
 import {
-  PHASES,
   COLORS,
   CYCLE_TYPES,
-  BPS_RANGES,
   HANG_LEVELS,
+  PHASES
 } from "./Constants";
-import { saveMatch } from "../../storage/MatchStorageManager";
-import { useNavigate } from "react-router-dom";
-import { BinaryDTO } from "../../storage/BinaryDTO";
-import { MATCH_SCHEMA } from "../../storage/ScoutingSchema";
 
 const exists = (val) => {
   return val !== null && val !== undefined
@@ -181,8 +179,8 @@ export const SIDEBAR_CONFIG = [
           robot: match.scoutData.teamNumber,
           scoutId: match.userToken.id,
           scoutName: match.userToken.username,
-          cycles: match.cycles.map(c => [CYCLE_TYPES.SNOWBALL, CYCLE_TYPES.SHOOTING].includes(c.type) ? 
-            {...c, rate: match.endgame[c.type===CYCLE_TYPES.SNOWBALL ? "snowballRate" : "shotRate"]}
+          cycles: match.cycles.map(c => [CYCLE_TYPES.SNOWBALL, CYCLE_TYPES.SHOOTING].includes(c.type) ?
+            { ...c, rate: match.endgame[c.type === CYCLE_TYPES.SNOWBALL ? "snowballRate" : "shotRate"] }
             : c
           ),
           endgame: match.endgame,
@@ -214,53 +212,27 @@ export const SIDEBAR_CONFIG = [
     phases: [PHASES.POST_MATCH],
     id: "submitMatchQR",
     positions: ["submitQR"],
-    flexWeight: 1.5,
-
     label: () => "Submit Match (QR)",
+    onClick: (match) => {
+      // 1. Use the helper function to clean the spaghetti
+      const matchToPack = prepareMatchForDTO(match);
 
-onClick: (match) => {
-      // 1. Prepare the data to match your Binary Schema exactly
-      const matchToPack = {
-        schemaVersion: 1, 
-        reportId: match.scoutData.reportId,
-        robot: match.scoutData.teamNumber,
-        scoutId: match.userToken.id,
-        
-        // Flatten endgame for the binary map
-        endgame_hangLevel: match.endgame.location || 0,
-        endgame_snowballRate: match.endgame.snowballRate || 0,
-        endgame_shotRate: match.endgame.shotRate || 0,
-        
-        // Process cycles into the binary-friendly format
-        cycles: match.cycles.map(c => ({
-          type: c.type,
-          success: !!c.success,
-          location: c.location || 0,
-          pinCount: c.pinCount || 0,
-          foulCount: c.foulCount || 0,
-          rate: [CYCLE_TYPES.SNOWBALL, CYCLE_TYPES.SHOOTING].includes(c.type) 
-                ? match.endgame[c.type === CYCLE_TYPES.SNOWBALL ? "snowballRate" : "shotRate"] 
-                : 0
-        }))
-      };
-
-      // 2. Use the packer on 'matchToPack'
+      // 2. Pack it using the Master Schema
       const packer = new BinaryDTO(MATCH_SCHEMA);
-      const qrPayload = packer.pack(matchToPack); 
-    
-      // 3. Use the variables existing on the 'match' object
+      const qrPayload = packer.pack(matchToPack);
+
+      // 3. Save it
       saveMatch(
-        matchToPack,         // data to save locally
-        match.searchParams,  // searchParams from match object
-        match.userToken,     // userToken from match object
-        false,               // submitAfter = false (Trigger QR)
-        null,                // no callback needed for QR
-        qrPayload            // the binary string
+        matchToPack,
+        match.searchParams,
+        match.userToken,
+        false,
+        null,
+        qrPayload
       );
 
-      console.log(`Packed! Shrunk by ~${Math.round(100 - (qrPayload.length / JSON.stringify(matchToPack).length * 100))}%`);
+      console.log(`Binary Payload: ${qrPayload}`);
     },
-
     color: () => COLORS.INFO,
     show: () => true
   }
