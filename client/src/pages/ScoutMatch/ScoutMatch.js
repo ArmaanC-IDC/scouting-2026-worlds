@@ -421,7 +421,6 @@ const ScoutMatch = () => {
     lastUndoMessage,
     redoMessage,
     showAlert,
-
     reset
   };
 

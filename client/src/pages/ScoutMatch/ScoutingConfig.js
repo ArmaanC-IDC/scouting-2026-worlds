@@ -36,13 +36,12 @@ const finishUnfinished = (match) => {
 };
 
 export const SCOUTING_CONFIG = {
-  STARTING_LINE: {
+ STARTING_LINE: {
     phases: [PHASES.PRE_MATCH],
     positions: { PRELOAD: [880, 650] },
     dimensions: { width: 0, height: 1410 },
     componentFunction: (match, key) => StartingPositionSlider(match),
   },
-
 
   MOVEMENT: {
     phases: [PHASES.AUTO, PHASES.TELE],
