@@ -79,6 +79,7 @@ export const SCOUTING_CONFIG = {
         fontWeight: 400,
       }
     },
+    showFunction: (match, key) => match.cycles.filter(c => c.type===CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1,
     onClick: (match, key) => {
       match.setActiveCycle({
         type: CYCLE_TYPES.SHOOTING,
@@ -97,6 +98,7 @@ export const SCOUTING_CONFIG = {
     phases: [PHASES.AUTO, PHASES.TELE],
     positions: { TOWER: [300, 800] },
     dimensions: { width: 500, height: 300 },
+    showFunction: (match, key) => match.cycles.filter(c => c.type===CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1,
     textFunction: (match, key) => "HANG",
     color: COLORS.HANG_DEFENSE,
     onClick: (match, key) => {
@@ -119,7 +121,7 @@ export const SCOUTING_CONFIG = {
     positions: { DEPOT: [500, 518] },
     dimensions: { width: 700, height: 250 },
     textFunction: (match, key) => "Alliance Zone Intake",
-    showFunction: (match, key) => !match.isDefending(), // Hide when defending
+    showFunction: (match, key) => match.cycles.filter(c => c.type===CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1 && !match.isDefending(),
     color: COLORS.INTAKE, // Using the color from Constants.js
     fontSize: 71,
     // When clicked, it starts an INTAKE cycle with the specific location
@@ -139,9 +141,9 @@ export const SCOUTING_CONFIG = {
     phases: [PHASES.AUTO, PHASES.TELE],
     // Replace with your desired coordinates
     positions: { ZONE: [1650, 800] },
+    showFunction: (match, key) => match.cycles.filter(c => c.type===CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 0 && !match.isDefending(),
     dimensions: { width: 950, height: 300 },
     textFunction: (match, key) => "Neutral Zone Intake",
-    showFunction: (match, key) => !match.isDefending(), // Hide when defending
     color: COLORS.INTAKE, // Using the color from Constants.js
     fontSize: 70,
     // When clicked, it starts an INTAKE cycle with the specific location
@@ -166,7 +168,10 @@ export const SCOUTING_CONFIG = {
     dimensions: { width: 800, height: 300 },
     textFunction: (match, key) => "FEED/BYPASS",
     color: COLORS.SHOOT, // Using a primary/active color
-    showFunction: (match, key) => key === "ALLIANCE_ZONE" ? !match.isDefending() : match.isDefending(),
+    showFunction: (match, key) => 
+      match.cycles.filter(c => c.type===CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === (key==="ALLIANCE_ZONE" ? 1 : 0) && 
+      key === "ALLIANCE_ZONE" ? !match.isDefending() : match.isDefending(),
+    // showFunction: (match, key) => ,
     fontSize: 90,
     onClick: (match, key) => {
       match.setActiveCycle({
@@ -241,6 +246,7 @@ export const SCOUTING_CONFIG = {
     dimensions: { width: 950, height: 250 },
     textFunction: (match, key) => match.isDefending() ? "End Defend/Steal" : "Start Defense/Steal",
     color: COLORS.HANG_DEFENSE,
+    showFunction: (match, key) => match.cycles.filter(c => c.type===CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 0,
     onClick: (match, key) => {
       if (match.isDefending()) {
         match.setDefenseCycle(
