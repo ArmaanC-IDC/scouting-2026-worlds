@@ -52,7 +52,6 @@ export const MATCH_SCHEMA = [
 
 export const prepareMatchForDTO = (matchState) => {
   const fullKey = matchState.searchParams.get("matchKey") || "qm0";
-  console.log("ek", eventKey);
   const matchParts = fullKey.match(/([a-z]+)(\d+)/i) || ["qm0", "qm", "0"];
 
   // Note: matchState.state is where the "Spaghetti" lives

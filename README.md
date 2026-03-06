@@ -8,10 +8,7 @@ Daisy
 Athrun
 
 TODO:
- - make "qm" a default dropdown in match selector
- - add "next match" button
  - Compress QR codes
- - Fix defense offset
  - Darken field image
 
  - Add name search for teams
