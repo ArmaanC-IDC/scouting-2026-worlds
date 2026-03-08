@@ -239,6 +239,18 @@ const ViewIndividualReports = ({ reports, headingColors }) => {
     );
   };
 
+  const matchStartTime = new Date(Number(reports[currentReport].match_start_time));
+  console.log("matchSTartTime", matchStartTime, reports[currentReport].match_start_time);
+  const matchStartTimeStr = matchStartTime.toLocaleTimeString('en-US', {
+    year: '2-digit',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
+
   return (
     <Paper sx={{ bgcolor: "#111", margin: "2%", width: "96%", padding: "2vh 2vw", boxShadow: `0px 0px 10px #aaa` }}>
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
@@ -283,6 +295,11 @@ const ViewIndividualReports = ({ reports, headingColors }) => {
                 <Typography sx={{ color: "#ccc" }}>Defense Skill: {reports[currentReport].defense_skill}</Typography>
                 <Typography sx={{ color: "#ccc" }}>Roles: {JSON.parse(reports[currentReport].roles).join(', ')}</Typography>
               </Box>
+            </Box>
+
+            <Box sx={{ display: "flex", gap: "2vw", justifyContent: "space-between" }}>
+              <Typography sx={{ color: "#ccc" }}>Scouted by {reports[currentReport].scout_name}</Typography>
+              <Typography sx={{ color: "#ccc" }}>Time: {matchStartTimeStr}</Typography>
             </Box>
 
             {Object.keys(reports[currentReport].totals[selectedPhase] || {}).map(groupName => (
