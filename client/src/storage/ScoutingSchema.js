@@ -77,7 +77,7 @@ export const prepareMatchForDTO = (matchState) => {
     snowballRate: s.endgame?.snowballRate || 0,
     roles: (s.endgame?.roles || []).join(", "), // ADD THIS (Joins ["Steal", "Feed"] into "Steal, Feed")
 
-    cycles: s.cycles.map(c => {
+    cycles: s.cycles.filter(c => c.type && c.startTime !== undefined).map(c => {
       // In prepareMatchForDTO
       const startDeci = Math.floor(c.startTime / 100);
       const endDeci = Math.floor((c.endTime || c.startTime) / 100);
