@@ -37,6 +37,10 @@ router.get("/", verifyToken, async (req, res) => {
       matchKey,
       robot
     );
+    
+    if (reports.length===0) {
+      return res.status(204).json({ data: [] });
+    }
 
     console.log("reportsAndCyclesFiltered", reports);
     console.log("reportsAndCyclesFilteredAuto", reports.auto);

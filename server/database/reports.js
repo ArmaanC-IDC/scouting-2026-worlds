@@ -105,7 +105,7 @@ export const getMatchPreviousReportsInternal = async (eventKey, matchKey) => {
   // Retrieve the match data using our existing internal function.
   const matchData = await getMatchDataInternal(eventKey, matchKey);
   if (!matchData) {
-    throw new Error("Match not found");
+    throw new Error("Match or robot not found");
   }
   // Extract team keys from the match data.
   const teams = [
@@ -161,7 +161,12 @@ export const getReportsFilteredInternal = async (eventKey, matchKey, robot) => {
     `;
     const result = await client.query(query, values);
     if (!result.rows || result.rows.length == 0) {
-      return await getMatchPreviousReportsInternal(eventKey, matchKey);
+      try {
+        return await getMatchPreviousReportsInternal(eventKey, matchKey);
+      } catch (error) {
+        console.log(error);
+        return [];
+      }
     }
     return result.rows;
   } finally {

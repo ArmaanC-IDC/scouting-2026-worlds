@@ -58,6 +58,9 @@ export const getReportsAndCyclesFiltered = async (
 ) => {
   // getReportsFiltered should build the query dynamically based on provided filters.
   const reports = await getReportsFiltered(req, eventKey, matchKey, robot);
+  if (reports.length===0) {
+    return [];
+  }
   for (let report of reports) {
     // Attach cycles using the report's id.
     report.cycles = await getCyclesByReport(req, eventKey, report.id);
