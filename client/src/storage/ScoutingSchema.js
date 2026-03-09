@@ -1,3 +1,4 @@
+import LZString from "lz-string";
 import { ATTENDING_EVENTS, CYCLE_TYPES, ENDGAME_ROLES, GAME_LOCATIONS, HANG_LEVELS, PHASES, PRACTICE_EVENTS } from "../pages/ScoutMatch/Constants";
 
 export const DTO_MAPS = {
@@ -17,6 +18,7 @@ export const DTO_MAPS = {
 
 export const MATCH_SCHEMA = [
   { key: "schemaVersion", type: "uint8" },
+  { key: "isCompressed", type: "bool" },
   { key: "eventKey", type: "uint8", map: DTO_MAPS.eventKey },
   { key: "matchType", type: "uint8", map: DTO_MAPS.matchTypes },
   { key: "matchNumber", type: "uint16" },
@@ -56,11 +58,24 @@ export const prepareMatchForDTO = (matchState) => {
 
   // Note: matchState.state is where the "Spaghetti" lives
   const s = matchState.state;
-
   console.log("matchState", matchState);
+
+  let isCompressed = false;
+  const encoder = new TextEncoder();
+  const raw = s.endgame?.comments || "";
+  const rawBytes = encoder.encode(raw);
+  let comments = rawBytes.slice(0, 255);
+  const compressed = LZString.compressToUint8Array(raw);
+  // is greater than 0, less than 255, and less than the original
+  if (compressed.length > 0 && compressed.length < 255 && compressed.length < rawBytes.length) {
+    comments = compressed;
+    isCompressed = true;
+  }
+  comments = String.fromCharCode(...comments);
 
   return {
     schemaVersion: 1,
+    isCompressed: isCompressed,
     eventKey: matchState.searchParams.get("eventKey") || "NONE", // Pull from parent state
     matchType: matchParts[1].toLowerCase(),
     matchNumber: parseInt(matchParts[2]),
@@ -93,6 +108,6 @@ export const prepareMatchForDTO = (matchState) => {
         success: c.success !== undefined ? c.success : true
       };
     }),
-    comments: s.endgame?.comments || ""
+    comments: comments
   };
 };

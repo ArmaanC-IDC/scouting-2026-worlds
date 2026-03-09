@@ -1,3 +1,5 @@
+import LZString from "lz-string";
+
 const BASE45_CHARSET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
 
 export class BinaryDTO {
@@ -20,13 +22,30 @@ export class BinaryDTO {
 
     const decode = (schemaSlice, targetObj) => {
       schemaSlice.forEach((field) => {
-        const { value, newOffset } = this._deserializeField(field, bytes, offset);
-        targetObj[field.key] = value;
-        offset = newOffset;
+        if (field.key === "comments") {
+          const len = bytes[offset];
+          offset += 1;
+          targetObj.comments = bytes.slice(offset, offset + len); // Save as raw Uint8Array
+          offset += len;
+        } else {
+          const { value, newOffset } = this._deserializeField(field, bytes, offset);
+          targetObj[field.key] = value;
+          offset = newOffset;
+        }
       });
     };
 
     decode(this.schema, result);
+
+    if (result.comments instanceof Uint8Array) {
+      if (result.isCompressed) {
+        result.comments = LZString.decompressFromUint8Array(result.comments);
+      } else {
+        // Handles emojis safely for non-compressed text
+        result.comments = new TextDecoder().decode(result.comments);
+      }
+    }
+
     return result;
   }
 
@@ -40,8 +59,8 @@ export class BinaryDTO {
       bytes.push(value ? 1 : 0);
     } else if (field.type === "string") {
       const str = String(value || "");
-      bytes.push(Math.min(str.length, 255)); // Length prefix
-      for (let i = 0; i < Math.min(str.length, 255); i++) {
+      bytes.push(str.length); // Length prefix
+      for (let i = 0; i < str.length; i++) {
         bytes.push(str.charCodeAt(i) & 0xff);
       }
     } else if (field.type === "array") {
