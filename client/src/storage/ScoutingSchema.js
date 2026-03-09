@@ -64,12 +64,16 @@ export const prepareMatchForDTO = (matchState) => {
   const encoder = new TextEncoder();
   const raw = s.endgame?.comments || "";
   const rawBytes = encoder.encode(raw);
-  let comments = rawBytes.slice(0, 255);
+  let comments = rawBytes;
   const compressed = LZString.compressToUint8Array(raw);
   // is greater than 0, less than 255, and less than the original
   if (compressed.length > 0 && compressed.length < 255 && compressed.length < rawBytes.length) {
     comments = compressed;
     isCompressed = true;
+  }
+  if (comments.length > 255) {
+    comments = comments.slice(0, 255);
+    window.alert("Comment was too long and was sliced for export")
   }
   comments = String.fromCharCode(...comments);
 
