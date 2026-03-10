@@ -50,7 +50,7 @@ export const SCOUTING_CONFIG = {
     onClick: (match, key) => match.setCycles([...match.cycles, {
       location: key,
       type: CYCLE_TYPES.AUTO_MOVEMENT,
-      phase: PHASES.AUTO,
+      phase: match.phase,
       startTime: match.getCurrentTime(),
     }], `Move through ${key}`),
     textFunction: (match, key) => {
