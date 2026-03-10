@@ -676,13 +676,14 @@ const ScoutMatch = () => {
                 width: scaleWidthToActual(field.rowParams?.width || field.width),
                 height: scaleHeightToActual(field.rowParams?.height || field.height - 50),
                 display: "flex",
-                gap: scaleWidthToActual(field.rowParams?.gap || 10)
+                gap: scaleWidthToActual(field.rowParams?.gap || 10),
+                overflow: "hidden"
               }}>
                 {options.map((opt, idx) => {
                   const isSelected = selected.includes(opt);
 
                   return (
-                    <Box key={idx} sx={{ flex: 1 }}>
+                    <Box key={idx} sx={{ flex: opt.length+5, minWidth: 0 }}>
                       <FieldButton
                         color={isSelected ? COLORS.ACTIVE : COLORS.PENDING}
                         onClick={() => {
@@ -699,9 +700,7 @@ const ScoutMatch = () => {
                           match.setEndgame({ [field.id]: newValues });
                         }}
                         drawBorder={isSelected}
-                        sx={{
-                          fontSize: scaleWidthToActual(20) + "px",
-                        }}
+                        fontSize={50}
                       >
                         {opt}
                       </FieldButton>

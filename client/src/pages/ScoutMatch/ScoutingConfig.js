@@ -420,7 +420,7 @@ export const ENDGAME_CONFIG = [
     },
 
     rowParams: {
-      gap: 5
+      gap: 2
     }
   },
 
