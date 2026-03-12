@@ -13,7 +13,7 @@ export const DTO_MAPS = {
   cycleTypes: ["NONE", ...Object.keys(CYCLE_TYPES)],
   locations: ["NONE", ...Object.keys(GAME_LOCATIONS), "CLOSE", "FAR", "BUMP", "TRENCH", ...Object.keys(HANG_LEVELS), ...sliderPositions],
   phases: ["NONE", ...Object.keys(PHASES)],
-  roles: ["NONE", ...Object.keys(ENDGAME_ROLES)],
+  roles: ["NONE", ...Object.values(ENDGAME_ROLES)],
   rates: [0, 1, 3, 6, 9], // Mapping BPS_RANGES values to simple indices
   disabled: ["No", "Yes"],
   matchTypes: ["qm", "sf", "f", "p"]
@@ -25,8 +25,10 @@ export const MATCH_SCHEMA = [
   { key: "eventKey", type: "uint8", map: DTO_MAPS.eventKey },
   { key: "matchType", type: "uint8", map: DTO_MAPS.matchTypes },
   { key: "matchNumber", type: "uint16" },
+  { key: "matchStart", type: "uint32" },
   { key: "station", type: "uint8", map: DTO_MAPS.station },
   { key: "robot", type: "uint16" },
+  { key: "scoutId", type: "uint16" },
   //{ key: "perspective", type: "uint8", map: DTO_MAPS.perspectives },
 
   // Endgame
@@ -36,7 +38,7 @@ export const MATCH_SCHEMA = [
   { key: "accuracy", type: "uint8", map: DTO_MAPS.accuracy },
   { key: "shotRate", type: "uint8", map: DTO_MAPS.rates },
   { key: "snowballRate", type: "uint8", map: DTO_MAPS.rates },
-  { key: "roles", type: "string" },
+  { key: "roles", type: "array", itemSchema: [{ type: "uint8", map: DTO_MAPS.roles }] },
 
   {
     key: "cycles",
@@ -80,14 +82,20 @@ export const prepareMatchForDTO = (matchState) => {
   }
   comments = String.fromCharCode(...comments);
 
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startTime = (matchState.matchStartTime || Date.now()) - startOfDay.getTime();
+
   return {
     schemaVersion: 1,
     isCompressed: isCompressed,
     eventKey: matchState.searchParams.get("eventKey") || "NONE", // Pull from parent state
     matchType: matchParts[1].toLowerCase(),
     matchNumber: parseInt(matchParts[2]),
+    matchStart: startTime,
     station: matchState.searchParams.get("station") || "NONE",
     robot: matchState.scoutData?.teamNumber || 0,
+    scoutId: matchState.userToken?.id || 0,
     //perspective: s.perspective || "near",
 
     // Endgame fields (Matching your SCHEMA keys exactly)
@@ -97,7 +105,7 @@ export const prepareMatchForDTO = (matchState) => {
     accuracy: s.endgame?.accuracy || "Low", // ADD THIS
     shotRate: s.endgame?.shotRate || 0,
     snowballRate: s.endgame?.snowballRate || 0,
-    roles: (s.endgame?.roles || []).join(", "), // ADD THIS (Joins ["Steal", "Feed"] into "Steal, Feed")
+    roles: s.endgame?.roles || [],
 
     cycles: s.cycles.filter(c => c.type && c.startTime !== undefined).map(c => {
       // In prepareMatchForDTO

@@ -52,6 +52,13 @@ export class BinaryDTO {
   _serializeField(field, value, bytes) {
     if (field.type === "uint16") {
       bytes.push((value >> 8) & 0xff, value & 0xff);
+    } else if (field.type === "uint32") {
+      bytes.push(
+        (value >> 24) & 0xff,
+        (value >> 16) & 0xff,
+        (value >> 8) & 0xff,
+        value & 0xff
+      );
     } else if (field.type === "uint8") {
       const val = field.map ? field.map.indexOf(value) : value;
       bytes.push((val === -1 ? 0 : val) & 0xff);
@@ -68,7 +75,9 @@ export class BinaryDTO {
       bytes.push(arr.length & 0xff);
       arr.forEach((item) => {
         field.itemSchema.forEach((subField) => {
-          this._serializeField(subField, item[subField.key], bytes);
+          // If subField has no key, it's a primitive array (like your roles)
+          const val = subField.key ? item[subField.key] : item;
+          this._serializeField(subField, val, bytes);
         });
       });
     }
@@ -79,6 +88,11 @@ export class BinaryDTO {
     if (field.type === "uint16") {
       value = (bytes[offset] << 8) | bytes[offset + 1];
       newOffset += 2;
+    } else if (field.type === "uint32") {
+      value = (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3];
+      // Note: Use unsigned right shift if you deal with very large numbers: (value >>> 0)
+      value = value >>> 0;
+      newOffset += 4;
     } else if (field.type === "uint8") {
       value = field.map ? field.map[bytes[offset]] : bytes[offset];
       newOffset += 1;
@@ -98,12 +112,20 @@ export class BinaryDTO {
       newOffset += 1;
       value = [];
       for (let i = 0; i < count; i++) {
-        const item = {};
-        field.itemSchema.forEach((subField) => {
-          const res = this._deserializeField(subField, bytes, newOffset);
-          item[subField.key] = res.value;
+        let item;
+        // Check if we are decoding an object or a primitive
+        if (field.itemSchema.length === 1 && !field.itemSchema[0].key) {
+          const res = this._deserializeField(field.itemSchema[0], bytes, newOffset);
+          item = res.value;
           newOffset = res.newOffset;
-        });
+        } else {
+          item = {};
+          field.itemSchema.forEach((subField) => {
+            const res = this._deserializeField(subField, bytes, newOffset);
+            item[subField.key] = res.value;
+            newOffset = res.newOffset;
+          });
+        }
         value.push(item);
       }
     }

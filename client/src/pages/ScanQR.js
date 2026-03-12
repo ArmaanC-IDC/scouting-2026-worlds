@@ -68,61 +68,65 @@ const ScanQR = () => {
 
     const tryUnpack = async (str) => {
         try {
-            // 1. First, try to decompress the LZ string 
-            // If it's not LZ compressed, this usually returns null or the original string
             let workingStr = str;
+            // 1. Try LZ Decompression (though BinaryDTO usually handles its own base45)
             try {
                 const decompressed = LZString.decompressFromEncodedURIComponent(str);
                 if (decompressed) workingStr = decompressed;
-            } catch (lzErr) {
-                console.log("Not LZ compressed, attempting raw unpack...");
-            }
+            } catch (lzErr) { /* ignore */ }
 
-            // 2. Instantiate the DTO engine with our schema
             const dto = new BinaryDTO(MATCH_SCHEMA);
-
-            // 3. Unpack the Base45 binary string
             const data = dto.unpack(workingStr);
 
-            // 4. Reconstruct the Combined Match Key (e.g., "qm" + 4 = "qm4")
+            // 2. Reconstruct Time (ms since midnight -> full Unix timestamp)
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            const fullMatchStart = startOfToday + data.matchStart;
+
+            // 3. Cycle Reconstruction (Inflate time & Inject rates)
+            const processedCycles = (data.cycles || []).map(cycle => {
+                let rateValue = 0;
+                if (cycle.type === "SHOOT") rateValue = data.shotRate || 0;
+                if (cycle.type === "SNOWBALL") rateValue = data.snowballRate || 0;
+
+                return {
+                    ...cycle,
+                    startTime: cycle.startTime * 100,
+                    endTime: (cycle.startTime + cycle.duration) * 100,
+                    phase: (cycle.phase || "TELE").toLowerCase(), // Match DB 'auto'/'tele'
+                    rate: rateValue // Important for the cycles table
+                };
+            });
+
+            // 4. Match Key handling
             data.matchKey = `${data.matchType}${data.matchNumber}`;
 
-            // 5. Re-inflate the Seconds to Milliseconds for the database
-            data.cycles = (data.cycles || []).map(cycle => ({
-                ...cycle,
-                startTime: cycle.startTime * 100,
-                endTime: (cycle.startTime + cycle.duration) * 100,
-            }));
-
-            // 6. Cleanup internal-only keys used for binary efficiency
-            delete data.matchType;
-            delete data.matchNumber;
-
-            console.log("Successfully Unpacked Binary:", data);
-
-            showAlert("Getting match data (report ID and Robot");
+            // 5. Fetch Metadata from Server
+            showAlert("Syncing with schedule...");
             const res = await getScoutMatch({
                 eventKey: data.eventKey,
                 matchKey: data.matchKey,
-                station: data.station
+                station: data.station,
+                scoutId: data.scoutId
             });
-            showAlert("Got match data");
-            const reportId = res.data.reportId;
-            const robot = res.data.teamNumber;
 
-            setParsedData({ ...data, reportId, robot });
-            showAlert(`Match ${data.matchKey} for Team ${data.robot} loaded!`);
+            const { reportId, teamNumber, username } = res.data; // reportId and teamNumber
+
+            // 6. Final Data Assembly
+            setParsedData({
+                ...data,
+                match_start_time: fullMatchStart,
+                reportId: reportId,
+                robot: teamNumber,
+                scoutName: username || `Scout #${data.scoutId}`,
+                cycles: processedCycles
+            });
+
+            showAlert(`Match ${data.matchKey} for Team ${teamNumber} loaded!`);
 
         } catch (e) {
-            // 7. Fallback: Check if it's a regular JSON string (for testing/legacy)
-            try {
-                const data = JSON.parse(str);
-                setParsedData(data);
-                showAlert("Loaded via JSON Fallback.");
-            } catch (jsonErr) {
-                console.error("Critical Unpack Error:", e);
-                showAlert("Format Error: This QR code is not recognized.");
-            }
+            console.error("Critical Unpack Error:", e);
+            showAlert("Format Error: This QR code is not recognized.");
         }
     };
 
@@ -130,16 +134,41 @@ const ScanQR = () => {
         if (!parsedData) return;
         try {
             showAlert("Submitting to Server...");
-            // Map your binary object to your API's expected format
+
+            // 7. THE TRANSLATION LAYER (CamelCase -> Snake_Case)
+            // This ensures the main report table columns are populated
+            const reportPayload = {
+                reportId: parsedData.reportId,
+                matchStartTime: parsedData.match_start_time, // Backend expects matchStartTime (camelCase)
+                match_start_time: parsedData.match_start_time, // For matchReportHelper
+                robot: String(parsedData.robot),
+                station: parsedData.station,
+                scoutId: parsedData.scoutId,
+                scoutName: parsedData.scoutName,
+
+                // THE MISSING PIECE: The Backend wants these inside an 'endgame' object
+                endgame: {
+                    disabled: parsedData.disabled || "No",
+                    driverSkill: String(parsedData.driverSkill || "0"),
+                    defenseSkill: String(parsedData.defenseSkill || "0"),
+                    accuracy: String(parsedData.accuracy || "NONE"),
+                    roles: (parsedData.roles || []).filter(r => r !== "NONE"),
+                    comments: parsedData.comments || ""
+                },
+
+                // Metadata for cycles
+                cycles: parsedData.cycles,
+            };
+
             const res = await submitMatch({
-                eventKey: parsedData.eventKey || "N/A",
-                matchKey: parsedData.matchKey || "N/A",
-                station: parsedData.station || "N/A",
-                matchData: parsedData // The whole object
+                eventKey: parsedData.eventKey,
+                matchKey: parsedData.matchKey,
+                station: parsedData.station,
+                matchData: reportPayload // The perfectly formatted payload
             });
 
             if (res.status === 200) {
-                showAlert("Success! Match saved to Database.");
+                showAlert("Match Submitted Successfully");
             } else {
                 showAlert("Server Error: " + res.status);
             }
