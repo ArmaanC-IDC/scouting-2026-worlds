@@ -8,8 +8,8 @@ Daisy
 Athrun
 
 TODO:
+ - Add Confirm button after "to endgame"
  - Compress QR codes
- - Darken field image
 
  - Add name search for teams
  - Make center only visible when bot moves to center and same with Alliance zone

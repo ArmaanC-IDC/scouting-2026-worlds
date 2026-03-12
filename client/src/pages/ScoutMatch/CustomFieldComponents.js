@@ -23,24 +23,19 @@ export const ImageIcon = (imageSrc) => (
 );
 
 export const StartingPositionSlider = (match) => {
-  const flipSlider = match.isScoutingRed == match.isScoringTableFar;
+  const flipSlider = match.isScoutingRed;
 
   return (
     <Slider
       orientation="vertical"
-      value={match.startingPosition * (flipSlider ? -1 : 1)}
-      onChange={(event, value) => match.setStartingPosition(Math.abs(value))}
-      min={flipSlider ? -13 : 1}
-      max={flipSlider ? -1 : 13}
+      value={flipSlider ? 10 - match.startingPosition : match.startingPosition}
+      onChange={(event, value) => match.setStartingPosition(flipSlider ? 10 - value : value)}
+      min={1}
+      max={10}
       step={1}
       valueLabelDisplay="on"
       valueLabelFormat={(value) => <div>{match.scoutData?.teamNumber}</div>}
       sx={{
-        transform: flipSlider
-          ? ""
-          : `translateY(${match.fieldCanvasRef.current?.scaleHeightToActual(
-              -300
-            )}px)`,
         marginTop: `${match.fieldCanvasRef.current?.scaleHeightToActual(
           150
         )}px`,
@@ -49,7 +44,6 @@ export const StartingPositionSlider = (match) => {
         )}px`,
         padding: 0,
         "& .MuiSlider-thumb": {
-          // backgroundImage: `url("https://i.imgur.com/TqGjfyf.jpg")`,
           width: match.fieldCanvasRef.current?.scaleWidthToActual(300) || 0,
           height: match.fieldCanvasRef.current?.scaleHeightToActual(300) || 0,
           margin: 0,

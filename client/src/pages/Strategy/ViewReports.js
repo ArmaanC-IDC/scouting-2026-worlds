@@ -239,6 +239,18 @@ const ViewIndividualReports = ({ reports, headingColors }) => {
     );
   };
 
+  const matchStartTime = new Date(Number(reports[currentReport].match_start_time));
+  console.log("matchSTartTime", matchStartTime, reports[currentReport].match_start_time);
+  const matchStartTimeStr = matchStartTime.toLocaleTimeString('en-US', {
+    year: '2-digit',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
+
   return (
     <Paper sx={{ bgcolor: "#111", margin: "2%", width: "96%", padding: "2vh 2vw", boxShadow: `0px 0px 10px #aaa` }}>
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
@@ -283,6 +295,11 @@ const ViewIndividualReports = ({ reports, headingColors }) => {
                 <Typography sx={{ color: "#ccc" }}>Defense Skill: {reports[currentReport].defense_skill}</Typography>
                 <Typography sx={{ color: "#ccc" }}>Roles: {JSON.parse(reports[currentReport].roles).join(', ')}</Typography>
               </Box>
+            </Box>
+
+            <Box sx={{ display: "flex", gap: "2vw", justifyContent: "space-between" }}>
+              <Typography sx={{ color: "#ccc" }}>Scouted by {reports[currentReport].scout_name}</Typography>
+              <Typography sx={{ color: "#ccc" }}>Time: {matchStartTimeStr}</Typography>
             </Box>
 
             {Object.keys(reports[currentReport].totals[selectedPhase] || {}).map(groupName => (
@@ -376,6 +393,24 @@ const RenderTopBar = ({
             >
               SUMMARY
             </Button>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                window.location.href = window.location.href;
+              }}
+              sx={{
+                borderRadius: "0.7vw",
+                border: `2px solid ${accentColor}`,
+                color: "#ddd",
+                "&:hover": { backgroundColor: accentColor },
+                height: { xs: "50px", sm: "75px", md: "50px" },
+                margin: { xs: "1vh 5vw", sm: "1vh 1vw" },
+                width: { xs: "30vw", sm: "10vw" },
+                fontSize: 'calc(0.5vw + 7px)'
+              }}
+            >
+              RELOAD
+            </Button>
           </Box>
           <Box sx={{ display: "flex", flexDirection: { xs: "row", sm: "column" }, justifyContent: "center", alignItems: "center" }}>
 
@@ -459,6 +494,7 @@ const RenderTopBar = ({
                 )}
                 renderTags={(value, getItemProps) =>
                   value.map((option, index) => {
+                    if (!option) return null;
                     const { key, ...itemProps } = getItemProps({ index });
                     return (
                       <Chip
@@ -635,13 +671,17 @@ const ViewReports = ({ requiredParamKeys = ["eventKey"] }) => {
 
         let res;
         if (robots.length > 1) {
+          let responses = [];
           // Multiple robots: Fetch each robot individually and await all responses
-          const calls = robots.map((robot) => {
+          robots.forEach(async (robot) => {
             const robotParams = { ...params, robot };
-            const a = getReports(robotParams);
-            return a;
+            const a = await getReports(robotParams);
+            if (a.status===200) {
+              responses.push(a.data);
+            }
+            else setError(`Could not find data for team ${robot}`)
           });
-          const responses = await Promise.all(calls);
+          // const responses = await Promise.all(calls);
           // Aggregate or combine data as needed, here we combine all data arrays
           const combinedAverages = {}
           responses.flatMap(r => r.data.averages).forEach(r => {
@@ -699,7 +739,7 @@ const ViewReports = ({ requiredParamKeys = ["eventKey"] }) => {
         });
       });
     });
-  }
+  };
 
   return (
     <div style={{ color: "#E0E0E0", width: "100%", backgroundColor: "#11181a" }}>

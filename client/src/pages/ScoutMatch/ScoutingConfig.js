@@ -1,11 +1,8 @@
-import { bgcolor } from "@mui/system";
 import {
-  PHASES,
-  CYCLE_TYPES,
   COLORS,
+  CYCLE_TYPES,
   GAME_LOCATIONS,
-  ENDGAME_ROLES,
-  DISABLED_STATUS
+  PHASES
 } from "./Constants";
 import { StartingPositionSlider } from "./CustomFieldComponents";
 
@@ -38,11 +35,10 @@ const finishUnfinished = (match) => {
 export const SCOUTING_CONFIG = {
   STARTING_LINE: {
     phases: [PHASES.PRE_MATCH],
-    positions: { PRELOAD: [880, 950] },
+    positions: { PRELOAD: [880, 650] },
     dimensions: { width: 0, height: 1410 },
     componentFunction: (match, key) => StartingPositionSlider(match),
   },
-
 
   MOVEMENT: {
     phases: [PHASES.AUTO, PHASES.TELE],
@@ -51,7 +47,7 @@ export const SCOUTING_CONFIG = {
     onClick: (match, key) => match.setCycles([...match.cycles, {
       location: key,
       type: CYCLE_TYPES.AUTO_MOVEMENT,
-      phase: PHASES.AUTO,
+      phase: match.phase,
       startTime: match.getCurrentTime(),
     }], `Move through ${key}`),
     textFunction: (match, key) => {
@@ -80,6 +76,7 @@ export const SCOUTING_CONFIG = {
         fontWeight: 400,
       }
     },
+    showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1,
     onClick: (match, key) => {
       match.setActiveCycle({
         type: CYCLE_TYPES.SHOOTING,
@@ -98,6 +95,7 @@ export const SCOUTING_CONFIG = {
     phases: [PHASES.AUTO, PHASES.TELE],
     positions: { TOWER: [300, 800] },
     dimensions: { width: 500, height: 300 },
+    showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1,
     textFunction: (match, key) => "HANG",
     color: COLORS.HANG_DEFENSE,
     onClick: (match, key) => {
@@ -120,7 +118,7 @@ export const SCOUTING_CONFIG = {
     positions: { DEPOT: [500, 518] },
     dimensions: { width: 700, height: 250 },
     textFunction: (match, key) => "Alliance Zone Intake",
-    showFunction: (match, key) => !match.isDefending(), // Hide when defending
+    showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1 && !match.isDefending(),
     color: COLORS.INTAKE, // Using the color from Constants.js
     fontSize: 71,
     // When clicked, it starts an INTAKE cycle with the specific location
@@ -133,16 +131,16 @@ export const SCOUTING_CONFIG = {
       }, `Start Intake (${"ALLIANCE ZONE"}) Cycle`);
     },
     isSelected: (match, key) =>
-      match.activeCycle?.type === CYCLE_TYPES.INTAKE && match.activeCycle?.location === (match.phase === PHASES.AUTO ? key : "ALLIANCE_ZONE"),
+      match.activeCycle?.type === CYCLE_TYPES.INTAKE && match.activeCycle?.location === "ALLIANCE_ZONE",
   },
 
   NEUTRAL_ZONE_INTAKE: {
     phases: [PHASES.AUTO, PHASES.TELE],
     // Replace with your desired coordinates
     positions: { ZONE: [1650, 800] },
+    showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 0 && !match.isDefending(),
     dimensions: { width: 950, height: 300 },
     textFunction: (match, key) => "Neutral Zone Intake",
-    showFunction: (match, key) => !match.isDefending(), // Hide when defending
     color: COLORS.INTAKE, // Using the color from Constants.js
     fontSize: 70,
     // When clicked, it starts an INTAKE cycle with the specific location
@@ -159,26 +157,28 @@ export const SCOUTING_CONFIG = {
       match.activeCycle?.type === CYCLE_TYPES.INTAKE && match.activeCycle?.location === "NEUTRAL_ZONE",
   },
 
-  // Configuration for the Snowball (Burst) button
-  SNOWBALL: {
+  // Configuration for the Bypass (Burst) button
+  BYPASS: {
     phases: [PHASES.AUTO, PHASES.TELE],
     // Replace with your desired coordinates
     positions: { ALLIANCE_ZONE: [500, 235], NEUTRAL_ZONE: [1650, 800] },
     dimensions: { width: 800, height: 300 },
-    textFunction: (match, key) => "FEED/BYPASS",
+    textFunction: (match, key) => "BYPASS",
     color: COLORS.SHOOT, // Using a primary/active color
-    showFunction: (match, key) => key === "ALLIANCE_ZONE" ? !match.isDefending() : match.isDefending(),
+    showFunction: (match, key) =>
+      key === "ALLIANCE_ZONE" ? !match.isDefending() : match.isDefending(),
+    // showFunction: (match, key) => ,
     fontSize: 90,
     onClick: (match, key) => {
       match.setActiveCycle({
-        type: CYCLE_TYPES.SNOWBALL,
+        type: CYCLE_TYPES.BYPASS,
         phase: match.phase,
         location: key,
         startTime: match.getCurrentTime(),
-      }, `Start Feed/Bypass (${key}) Cycle`);
+      }, `Start Bypass (${key}) Cycle`);
     },
     isSelected: (match, key) =>
-      match.activeCycle?.type === CYCLE_TYPES.SNOWBALL && match.activeCycle?.location === key,
+      match.activeCycle?.type === CYCLE_TYPES.BYPASS && match.activeCycle?.location === key,
   },
 
   HISTORY_CONTROLS: {
@@ -191,13 +191,13 @@ export const SCOUTING_CONFIG = {
     dimensions: { width: 450, height: 450 },
     textFunction: (match, key) => {
       if (key === 'UNDO' && match.canUndo()) {
-          return `Undo: ${match.lastUndoMessage}`; // <-- Displays the message
+        return `Undo: ${match.lastUndoMessage}`; // <-- Displays the message
       }
       else if (key === 'REDO' && match.canRedo()) {
         return (`Redo: ${match.redoMessage}`)
       }
       return key;
-  },
+    },
 
     onClick: (match, key) => {
       if (key === "UNDO") {
@@ -242,11 +242,12 @@ export const SCOUTING_CONFIG = {
     dimensions: { width: 950, height: 250 },
     textFunction: (match, key) => match.isDefending() ? "End Defend/Steal" : "Start Defense/Steal",
     color: COLORS.HANG_DEFENSE,
+    showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 0,
     onClick: (match, key) => {
       if (match.isDefending()) {
         match.setDefenseCycle(
           prev => { return { ...prev.defenseCycle, endTime: match.getCurrentTime() } },
-        `End Defense/Steal`); // End defense
+          `End Defense/Steal`); // End defense
       } else {
         match.setDefenseCycle({
           type: CYCLE_TYPES.DEFENSE,
@@ -280,7 +281,7 @@ export const SCOUTING_CONFIG = {
 
   DEFENSE_CONTACT: {
     phases: [PHASES.TELE],
-    positions: { CONTACT: [2800, 1200] }, // Replaces SNOWBALL position
+    positions: { CONTACT: [2800, 1200] }, // Replaces BYPASS position
     dimensions: { width: 800, height: 400 },
     showFunction: (match, key) => match.isDefending(),
     textFunction: (match, key) => "CONTACT",
@@ -348,31 +349,31 @@ export const ENDGAME_CONFIG = [
   // --------------------
   // ACCURACY
   // --------------------
-  {
-    id: "accuracy",
-    type: "TOGGLE",
-    label: "Accuracy",
+  // {
+  //   id: "accuracy",
+  //   type: "TOGGLE",
+  //   label: "Accuracy",
 
-    fieldX: 650,
-    fieldY: 950,
-    width: 1200,
-    height: 200,
+  //   fieldX: 650,
+  //   fieldY: 950,
+  //   width: 1200,
+  //   height: 200,
 
-    options: ["Low", "Med", "High"],
-    values: ["Low", "Med", "High"],
+  //   options: ["Low", "Med", "High", ],
+  //   values: ["Low", "Med", "High", ],
 
-    labelParams: {
-      height: 150
-    },
+  //   labelParams: {
+  //     height: 150
+  //   },
 
-    rowParams: {
-      gap: 5
-    }
-  },
+  //   rowParams: {
+  //     gap: 5
+  //   }
+  // },
 
-  // // --------------------
+  // // ---------------------
   // // DISABLED STATUS
-  // // --------------------
+  // // ---------------------
   {
     id: "disabled",
     type: "TOGGLE",
@@ -416,7 +417,7 @@ export const ENDGAME_CONFIG = [
     },
 
     rowParams: {
-      gap: 5
+      gap: 2
     }
   },
 
@@ -443,7 +444,7 @@ export const ENDGAME_CONFIG = [
   },
 
   {
-    id: "snowballRate",
+    id: "bypassRate",
     type: "TOGGLE",
     label: "Bypass Rate",
 

@@ -74,15 +74,19 @@ const ScoutMatch = () => {
     ) {
       setSearchParamsError("Missing search params");
     } else if (
-      !scoutData ||
+      !scoutData || !scoutData.scout || !scoutData.teamNumber ||
       scoutData.matchKey !== searchParams.get("matchKey") ||
       scoutData.station !== searchParams.get("station")
     ) {
-      fetchScoutMatchData();
+      if (navigator.onLine)
+        fetchScoutMatchData();
+      else {
+        setSearchParamsError("Missing search params");
+      }
     }
   }, [searchParams]);
 
-  const handleMissingParamsSubmit = ({ eventKey, matchKey, station, robot }, usedNetwork) => {
+  const handleMissingParamsSubmit = ({ eventKey, matchKey, station, robot, scout }, usedNetwork) => {
     setSearchParams({
       eventKey: eventKey.toLowerCase(),
       matchKey: matchKey.toLowerCase(),
@@ -90,12 +94,13 @@ const ScoutMatch = () => {
       perspective: PERSPECTIVE.SCORING_TABLE_NEAR
     });
     if (!usedNetwork){
-      console.log("here", eventKey, matchKey, station);
       setScoutData({
         matchKey,
         station,
-        teamNumber: robot,
+        teamNumber: robot
       });
+
+      localStorage.setItem("username", scout);
     }
     setSearchParamsError(null);
   };
@@ -248,7 +253,7 @@ const ScoutMatch = () => {
       roles: [], 
       comments: "",
       shotRate: 0,
-      snowballRate: 0,
+      bypassRate: 0,
       accuracy: 90,
     },
   };
@@ -415,7 +420,8 @@ const ScoutMatch = () => {
     navigate,
     lastUndoMessage,
     redoMessage,
-    showAlert
+    showAlert,
+    reset
   };
 
 
@@ -428,7 +434,7 @@ const ScoutMatch = () => {
     switch (activeCycle.type) {
       case CYCLE_TYPES.SHOOTING:
       case CYCLE_TYPES.INTAKE:
-      case CYCLE_TYPES.SNOWBALL:
+      case CYCLE_TYPES.BYPASS:
         if (exists(activeCycle.rate)) {
           setState(prevState => ({
             ...prevState,
@@ -491,6 +497,7 @@ const ScoutMatch = () => {
               isDefending={match.isDefending()}
               sx={{ pointerEvents: noPointerEvents ? "none" : "auto", }}
               flip={!dontFlip}
+              phase={match.phase}
             >
               {componentFunction(match)}
             </FieldLocalComponent>
@@ -669,13 +676,14 @@ const ScoutMatch = () => {
                 width: scaleWidthToActual(field.rowParams?.width || field.width),
                 height: scaleHeightToActual(field.rowParams?.height || field.height - 50),
                 display: "flex",
-                gap: scaleWidthToActual(field.rowParams?.gap || 10)
+                gap: scaleWidthToActual(field.rowParams?.gap || 10),
+                overflow: "hidden"
               }}>
                 {options.map((opt, idx) => {
                   const isSelected = selected.includes(opt);
 
                   return (
-                    <Box key={idx} sx={{ flex: 1 }}>
+                    <Box key={idx} sx={{ flex: opt.length+5, minWidth: 0 }}>
                       <FieldButton
                         color={isSelected ? COLORS.ACTIVE : COLORS.PENDING}
                         onClick={() => {
@@ -692,9 +700,7 @@ const ScoutMatch = () => {
                           match.setEndgame({ [field.id]: newValues });
                         }}
                         drawBorder={isSelected}
-                        sx={{
-                          fontSize: scaleWidthToActual(20) + "px",
-                        }}
+                        fontSize={50}
                       >
                         {opt}
                       </FieldButton>
@@ -720,7 +726,7 @@ const ScoutMatch = () => {
                     value={match.endgame.comments || ""}
                     onChange={(e) => match.setEndgame({ comments: e.target.value })}
                     style={{ width: "100%", height: "100%", fontSize: scaleWidthToActual(40) + "px", padding: "10px" }}
-                    placeholder="Can shoot while moving? Go through trench/bump well? Spills balls? Avoids defense?"
+                    placeholder="Can feed/how well? Can shoot while moving? Go through trench/bump well? Spills balls? Avoids defense?"
                   />
                 </Box>
               </Box>
@@ -763,7 +769,7 @@ const ScoutMatch = () => {
   const renderScoutDataLabel = () => {
     return (
       <Box sx={{ backgroundColor: getTheme().palette.primary.main, color: getTheme().palette.primary.contrastText, fontSize: scaleWidthToActual(50) + "px", display: "flex", justifyContent: "center" }}>
-        {scoutData ? (<div>Scout: {userToken?.username} Team: {scoutData.teamNumber} Match: {getmatchKey()}</div>) : (<div>No scout data</div>)}
+        {scoutData ? (<div>Scout: {userToken?.username || "Not Found"} Team: {scoutData.teamNumber} Match: {getmatchKey()}</div>) : (<div>No scout data</div>)}
       </Box>
     );
   };
@@ -852,8 +858,9 @@ const ScoutMatch = () => {
             searchParams={searchParams}
             searchParamsError={searchParamsError}
             onSubmit={handleMissingParamsSubmit}
+            scoutData={scoutData}
             requiredParamKeys={["eventKey", "matchKey", "station"]}
-            offlineRequiredParamKeys={["eventKey", "matchKey", "station", "robot"]}
+            offlineRequiredParamKeys={["eventKey", "matchKey", "station", "robot", "scout"]}
             offlineOption={true}
           />
           <Box

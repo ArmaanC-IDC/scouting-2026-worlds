@@ -114,10 +114,6 @@ const Sidebar = ({
           }
         ),
 
-        <center key="sidebarPerspective">
-          <h3 key="sidebarPerspectiveHeading">PERSPECTIVE</h3>
-        </center>,
-
         // createButtonsFromList(
         //   PERSPECTIVE,
         //   750,

@@ -35,15 +35,15 @@ export const SIDEBAR_CONFIG = [
     isDisabled: (match) => match.startingPosition < 0,
   },
 
-  // ------------ CYCLE/SNOWBALLING Stop --------------
+  // ------------ CYCLE/BYPASSING Stop --------------
   {
     phases: [PHASES.AUTO, PHASES.TELE],
-    id: "stopCycleSnowball",
+    id: "stopCycleBypass",
     positions: ["stop"],
     flexWeight: 2,
     label: (match) => `Stop ${match.activeCycle.type.toLowerCase().replace(/[aeiou]$/i, '')}ing`,
     show: (match, key) => exists(match.activeCycle.startTime) && !exists(match.activeCycle.endTime) &&
-      ([CYCLE_TYPES.SHOOTING, CYCLE_TYPES.SNOWBALL].includes(match.activeCycle.type)),
+      ([CYCLE_TYPES.SHOOTING, CYCLE_TYPES.BYPASS].includes(match.activeCycle.type)),
     onClick: (match, key) => {
       match.setActiveCycle({
         ...match.activeCycle,
@@ -72,7 +72,7 @@ export const SIDEBAR_CONFIG = [
 
   // ------------- HANG LEVEL --------------------------
   {
-    phases: [PHASES.AUTO, PHASES.TELE], // Hanging is a TeleOp action
+    phases: [PHASES.TELE], // Hanging is a TeleOp action
     id: "hangLevelSelection",
     // Use the HANG_LEVELS constants you just added
     positions: Object.keys(HANG_LEVELS),
@@ -113,7 +113,9 @@ export const SIDEBAR_CONFIG = [
 
     // This is the magic: Show only if the cycle is HANG and a level IS set.
     show: (match) =>
-      match.activeCycle?.type === CYCLE_TYPES.HANG && !!match.activeCycle.location && !exists(match.activeCycle.endTime)
+      match.activeCycle?.type === CYCLE_TYPES.HANG &&
+      ((!!match.activeCycle.location && !exists(match.activeCycle.endTime)) ||
+        (match.phase === PHASES.AUTO && !exists(match.activeCycle.endTime)))
   },
 
   // ---------- DEFENSE & CONTACT (Contextual) ----------
@@ -234,6 +236,35 @@ export const SIDEBAR_CONFIG = [
       console.log("Packaged Match: ", matchToPack);
       console.log(`Binary Payload: ${qrPayload}`);
     },
+    color: () => COLORS.INFO,
+    show: () => true
+  },
+  {
+    phases: [PHASES.POST_MATCH],
+    id: "nextMatch",
+    positions: ["nextMatch"],
+    flexWeight: 1.5,
+
+    label: () => "Next Match",
+
+    onClick: (match) => {
+      const currentMatch = match.searchParams.get("matchKey") || "qm1";
+      const pattern = /\d+|\D+/g
+      const matches = currentMatch.match(pattern);
+      const nextMatch = matches[0] + ((Number(matches[1]) || 0) + 1);
+      console.log(currentMatch, matches, nextMatch);
+      match.setSearchParams(prev => {
+        prev.set("matchKey", nextMatch);
+        return prev;
+      });
+
+      match.reset();
+      match.setScoutData({
+        ...match.scoutData,
+        teamNumber: null,
+      })
+    },
+
     color: () => COLORS.INFO,
     show: () => true
   }

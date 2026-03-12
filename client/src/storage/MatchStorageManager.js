@@ -1,8 +1,7 @@
 // matchStorage.js
 
-import { submitMatch as submitMatchRequest } from "../requests/ApiRequests";
 import QRCode from "qrcode";
-import { compressData } from "../pages/Common/Constants";
+import { submitMatch as submitMatchRequest } from "../requests/ApiRequests";
 
 // Track submissions in progress by their unsynced key.
 const submissionsInProgress = new Set();
@@ -139,7 +138,7 @@ export const saveMatch = (
   qrPayload = null // The binary string from Sidebar
 ) => {
   const syncedKey = generateKey(matchData.reportId, Object.fromEntries(searchParams), userToken, true);
-  
+
   if (localStorage.getItem(syncedKey)) {
     console.info(`Match already synced (${syncedKey}). Saving locally skipped.`);
     return;
@@ -162,7 +161,7 @@ export const showQRCodePopup = (data, searchParams) => {
 
   if (typeof data === "string") {
     // 1. SUCCESS: Use our new tiny BinaryDTO string
-    qrString = data; 
+    qrString = data;
   } else {
     // 2. FALLBACK: If BinaryDTO failed, just use standard JSON
     // We'll skip the buggy compressData and just stringify it.
@@ -190,7 +189,7 @@ export const showQRCodePopup = (data, searchParams) => {
   container.appendChild(title);
 
   const qrImg = document.createElement("img");
-  qrImg.style.width = "400px"; 
+  qrImg.style.width = "400px";
   qrImg.style.height = "400px";
   qrImg.style.border = "1px solid #ccc";
   container.appendChild(qrImg);
