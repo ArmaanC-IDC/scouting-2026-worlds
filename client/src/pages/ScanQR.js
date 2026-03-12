@@ -1,17 +1,17 @@
-import React, { useEffect, useRef, useState } from "react";
+import { Box, Button, Paper, Typography } from "@mui/material";
 import { Html5Qrcode } from "html5-qrcode";
-import { Box, Typography, Button, Paper, LinearProgress } from "@mui/material";
+import LZString from 'lz-string';
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getScoutMatch, submitMatch } from "../requests/ApiRequests";
-import { getSignedInUser } from "../TokenUtils.js";
 import AppAlert from "./Common/AppAlert.js";
-import { decompressData } from "./Common/Constants.js";
+
+// --- ADD THESE IMPORTS ---
+import { BinaryDTO } from "../storage/BinaryDTO";
+import { MATCH_SCHEMA } from "../storage/ScoutingSchema";
 
 const ScanQR = () => {
     const navigate = useNavigate();
-
-    const [scannedParts, setScannedParts] = useState({});
-    const [totalParts, setTotalParts] = useState(0);
     const [result, setResult] = useState(null);
     const [parsedData, setParsedData] = useState(null);
     const [alertOpen, setAlertOpen] = useState(false);
@@ -22,303 +22,191 @@ const ScanQR = () => {
         setAlertOpen(true);
     };
 
-    // useRef to hold the scanner instance
     const qrInstance = useRef(null);
 
     useEffect(() => {
-        // Initialize the scanner instance only once
         if (!qrInstance.current) {
             qrInstance.current = new Html5Qrcode("reader");
         }
         const html5QrCode = qrInstance.current;
 
-        const stopScanner = (spot) => {
-            console.log(spot);
-            // Ensure stop is only called if the scanner is active
+        const stopScanner = async () => {
             if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop()
-                    .then(() => {
-                        console.trace("QR Code scanner stopped successfully.");
-                        // Clean the container after stopping to remove the video feed UI
-                        const readerEl = document.getElementById("reader");
-                        if (readerEl) {
-                            readerEl.innerHTML = "";
-                        }
-                    })
-                    .catch((err) => {
-                        console.error("Failed to stop the scanner.", err);
-                    });
+                try {
+                    await html5QrCode.stop();
+                    const readerEl = document.getElementById("reader");
+                    if (readerEl) readerEl.innerHTML = "";
+                } catch (err) {
+                    console.error("Failed to stop scanner", err);
+                }
             }
         };
 
         const onScanSuccess = (decodedText) => {
-            // Regex for multi-part format: P1/3:data
-            const multiPartMatch = decodedText.match(/^P(\d+)\/(\d+):([\s\S]*)/);
-
-            if (multiPartMatch) {
-                const partIndex = parseInt(multiPartMatch[1], 10);
-                const total = parseInt(multiPartMatch[2], 10);
-                const data = multiPartMatch[3];
-
-                // Set total parts only once to trigger progress bar rendering
-                if (totalParts === 0) {
-                    setTotalParts(total);
-                }
-
-                setScannedParts((prev) => {
-                    // Avoid re-processing the same part
-                    if (prev[partIndex]) return prev;
-
-                    const newParts = { ...prev, [partIndex]: data };
-                    const currentCount = Object.keys(newParts).length;
-
-                    console.log(`Scanned part ${partIndex}/${total}. Collected ${currentCount}`);
-
-                    // Check if all parts have been scanned
-                    if (currentCount === total) {
-                        try {
-                            const fullData = [];
-                            for (let i = 1; i <= total; i++) {
-                                fullData.push(newParts[i]);
-                            }
-
-                            const finalString = fullData.join("");
-                            console.log("Multi-part scan complete. Final Result:", finalString); // Log final result
-
-                            setResult(finalString); // Display final result
-                            stopScanner(1); // Stop the scanner
-                            tryParse(finalString);
-                        } catch (err) {
-                            console.error("Error assembling multi-part QR data:", err);
-                        }
-                    }
-                    return newParts;
-                });
-            } else {
-                // Handle single, non-multipart QR codes
-                console.log("Single-part scan complete. Final Result:", decodedText); // Log final result
-                setResult(decodedText); // Display final result
-                stopScanner(2); // Stop the scanner
-                tryParse(decodedText);
-            }
+            console.log("Binary String Scanned:", decodedText);
+            setResult(decodedText);
+            stopScanner();
+            tryUnpack(decodedText); // <--- Switch to the Unpacker
         };
 
         const startScanner = async () => {
             try {
-                // Prevent starting if already scanning
                 if (html5QrCode.isScanning) return;
-
                 await html5QrCode.start(
                     { facingMode: "environment" },
-                    {
-                        fps: 10,
-                        qrbox: { width: 250, height: 250 },
-                    },
-                    onScanSuccess,
-                    () => { } // Optional failure callback
+                    { fps: 15, qrbox: { width: 280, height: 280 } },
+                    onScanSuccess
                 );
             } catch (err) {
-                console.error("Failed to start the scanner:", err);
+                console.error("Scanner start error:", err);
             }
         };
 
         startScanner();
+        return () => stopScanner();
+    }, []);
 
-        // Cleanup function for when the component unmounts
-        return () => {
-            stopScanner(3);
-        };
-    }, []); // Rerun effect if totalParts changes (though it shouldn't after the first scan)
-
-    const tryParse = async (str) => {
+    const tryUnpack = async (str) => {
         try {
-            console.log("str", str);
-            let json = JSON.parse(str);
-            decompressData(json);
-            showAlert("Getting match data (report ID and Robot");
+            let workingStr = str;
+            // 1. Try LZ Decompression (though BinaryDTO usually handles its own base45)
+            try {
+                const decompressed = LZString.decompressFromEncodedURIComponent(str);
+                if (decompressed) workingStr = decompressed;
+            } catch (lzErr) { /* ignore */ }
+
+            const dto = new BinaryDTO(MATCH_SCHEMA);
+            const data = dto.unpack(workingStr);
+
+            // 2. Reconstruct Time (ms since midnight -> full Unix timestamp)
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            const fullMatchStart = startOfToday + data.matchStart;
+
+            // 3. Cycle Reconstruction (Inflate time & Inject rates)
+            const processedCycles = (data.cycles || []).map(cycle => {
+                let rateValue = 0;
+                if (cycle.type === "SHOOT") rateValue = data.shotRate || 0;
+                if (cycle.type === "SNOWBALL") rateValue = data.snowballRate || 0;
+
+                return {
+                    ...cycle,
+                    startTime: cycle.startTime * 100,
+                    endTime: (cycle.startTime + cycle.duration) * 100,
+                    phase: (cycle.phase || "TELE").toLowerCase(), // Match DB 'auto'/'tele'
+                    rate: rateValue // Important for the cycles table
+                };
+            });
+
+            // 4. Match Key handling
+            data.matchKey = `${data.matchType}${data.matchNumber}`;
+
+            // 5. Fetch Metadata from Server
+            showAlert("Syncing with schedule...");
             const res = await getScoutMatch({
-                eventKey: json.eventKey, 
-                matchKey: json.matchKey, 
-                station: json.station
+                eventKey: data.eventKey,
+                matchKey: data.matchKey,
+                station: data.station,
+                scoutId: data.scoutId
             });
-            showAlert("Got match data");
-            const reportId = res.data.reportId;
-            const robot = res.data.teamNumber;
-            console.log("rId, robot", reportId, robot, res)
-            console.log("parsed Data", {...json, reportId, robot});
-            setParsedData({...json.matchData, reportId, robot});
+
+            const { reportId, teamNumber, username } = res.data; // reportId and teamNumber
+
+            // 6. Final Data Assembly
+            setParsedData({
+                ...data,
+                match_start_time: fullMatchStart,
+                reportId: reportId,
+                robot: teamNumber,
+                scoutName: username || `Scout #${data.scoutId}`,
+                cycles: processedCycles
+            });
+
+            showAlert(`Match ${data.matchKey} for Team ${teamNumber} loaded!`);
+
         } catch (e) {
-            console.error(e);
-            showAlert("Could not parse result", e);
-        }
-    }
-
-    const handleSubmit = async () => {
-        if (!parsedData) return;
-        const { eventKey, matchKey, station, ...matchData } = parsedData;
-        if (!eventKey || !matchKey || !station) {
-            showAlert("Invalid QR data: Missing event/match/station info.");
-            return;
-        }
-
-        //             export const submitMatch = async ({
-        //   eventKey,
-        //   matchKey,
-        //   station,
-        //   matchData,
-        // }) => {
-
-        try {
-            showAlert("submitting");
-            const res = await submitMatch({
-                eventKey,
-                matchKey,
-                station,
-                matchData
-            });
-
-            if (res.status === 200) {
-                showAlert("Match submitted");
-            } else {
-                showAlert("Submission error");
-                console.log(res);
-            }
-
-        } catch (err) {
-            showAlert("Network error");
-            console.error(err);
-            console.log(err.response);
+            console.error("Critical Unpack Error:", e);
+            showAlert("Format Error: This QR code is not recognized.");
         }
     };
 
+    const handleSubmit = async () => {
+        if (!parsedData) return;
+        try {
+            showAlert("Submitting to Server...");
 
-    const progress =
-        totalParts > 0
-            ? (Object.keys(scannedParts).length / totalParts) * 100
-            : 0;
+            // 7. THE TRANSLATION LAYER (CamelCase -> Snake_Case)
+            // This ensures the main report table columns are populated
+            const reportPayload = {
+                reportId: parsedData.reportId,
+                matchStartTime: parsedData.match_start_time, // Backend expects matchStartTime (camelCase)
+                match_start_time: parsedData.match_start_time, // For matchReportHelper
+                robot: String(parsedData.robot),
+                station: parsedData.station,
+                scoutId: parsedData.scoutId,
+                scoutName: parsedData.scoutName,
 
-    if (parsedData) console.log(parsedData);
+                // THE MISSING PIECE: The Backend wants these inside an 'endgame' object
+                endgame: {
+                    disabled: parsedData.disabled || "No",
+                    driverSkill: String(parsedData.driverSkill || "0"),
+                    defenseSkill: String(parsedData.defenseSkill || "0"),
+                    accuracy: String(parsedData.accuracy || "NONE"),
+                    roles: (parsedData.roles || []).filter(r => r !== "NONE"),
+                    comments: parsedData.comments || ""
+                },
+
+                // Metadata for cycles
+                cycles: parsedData.cycles,
+            };
+
+            const res = await submitMatch({
+                eventKey: parsedData.eventKey,
+                matchKey: parsedData.matchKey,
+                station: parsedData.station,
+                matchData: reportPayload // The perfectly formatted payload
+            });
+
+            if (res.status === 200) {
+                showAlert("Match Submitted Successfully");
+            } else {
+                showAlert("Server Error: " + res.status);
+            }
+        } catch (err) {
+            showAlert("Network Error: Could not reach server.");
+        }
+    };
 
     return (
-        <Box
-            sx={{
-                minHeight: "100vh",
-                width: "100%",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                bgcolor: "#222",
-                color: "#f00",
-                overflowY: "auto",
-                p: 2,
-            }}
-        >
-            <Paper
-                sx={{
-                    p: 4,
-                    bgcolor: "#333",
-                    color: "#fff",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 2,
-                    maxWidth: "90vw",
-                    width: "600px",
-                }}
-            >
-                <Typography variant="h4" gutterBottom>
-                    Scan QR Code
-                </Typography>
+        <Box sx={{ minHeight: "100vh", bgcolor: "#222", p: 2, display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <Paper sx={{ p: 4, bgcolor: "#333", color: "#fff", width: "100%", maxWidth: "500px", textAlign: "center" }}>
+                <Typography variant="h5" mb={3}>Lead Scout Scanner</Typography>
 
-                {result ? (
-                    <Box sx={{ width: "100%", wordBreak: "break-word", mt: 2 }}>
-                        <Typography variant="h6" color="success.main" gutterBottom>
-                            Scan Complete!
-                        </Typography>
-
-                        {parsedData ? (
-                            <Paper sx={{ p: 2, bgcolor: "#111", mb: 2 }}>
-                                <Typography variant="subtitle1" color="#fff">
-                                    <strong>Event:</strong> {parsedData.eventKey}
-                                </Typography>
-                                <Typography variant="subtitle1" color="#fff">
-                                    <strong>Match:</strong> {parsedData.matchKey}
-                                </Typography>
-                                <Typography variant="subtitle1" color="#fff">
-                                    <strong>Team:</strong> {parsedData.robot} ({parsedData.station})
-                                </Typography>
-                                <Typography variant="subtitle1" color="#fff">
-                                    <strong>Scout:</strong> {parsedData.scoutName}
-                                </Typography>
-                                <Typography variant="subtitle1" color="#fff">
-                                    <p>{JSON.stringify(parsedData)}</p>
-                                </Typography>
-                            </Paper>
-                        ) : (
-                            <Paper sx={{ p: 2, bgcolor: "#111", maxHeight: "300px", overflow: "auto" }}>
-                                <code style={{ color: "#0f0" }}>{result}</code>
-                            </Paper>
-                        )}
-
-                        {parsedData && (
-                            <Button
-                                variant="contained"
-                                color="success"
-                                size="large"
-                                fullWidth
-                                onClick={handleSubmit}
-                                sx={{ mb: 2 }}
-                            >
-                                Submit Match
-                            </Button>
-                        )}
-                    </Box>
+                {!result ? (
+                    <Box id="reader" sx={{ width: "100%", borderRadius: "12px", overflow: "hidden" }} />
                 ) : (
-                    <>
-                        <Box
-                            id="reader"
-                            sx={{
-                                width: "100%",
-                                borderRadius: "12px",
-                                overflow: "hidden",
-                            }}
-                        />
-
-                        {/* This part will now work correctly */}
-                        {totalParts > 1 && (
-                            <Box sx={{ width: "100%", mt: 2 }}>
-                                <Typography variant="body2" gutterBottom>
-                                    Progress: {Object.keys(scannedParts).length} / {totalParts} parts
-                                </Typography>
-                                <LinearProgress variant="determinate" value={progress} />
+                    <Box>
+                        {parsedData ? (
+                            <Box sx={{ textAlign: "left", bgcolor: "#111", p: 2, borderRadius: 2, mb: 2 }}>
+                                <Typography><strong>Robot:</strong> {parsedData.robot} ({parsedData.station})</Typography>
+                                <Typography><strong>Match:</strong> {parsedData.matchKey}</Typography>
+                                <Typography><strong>Cycles:</strong> {parsedData.cycles?.length || 0}</Typography>
+                                <Typography><strong>Hang:</strong> {parsedData.endgame_hangLevel}</Typography>
                             </Box>
+                        ) : (
+                            <Typography color="error">Invalid Data</Typography>
                         )}
-                    </>
-                )}
 
-                {result && <Button
-                    variant="contained"
-                    color="secondary"
-                    sx={{ mt: 2 }}
-                    onClick={() => window.location.reload()}
-                >
-                    Scan Another
-                </Button>}
-                <Button
-                    variant="outlined"
-                    color="primary"
-                    sx={{ mt: 2 }}
-                    onClick={() => navigate("/")}
-                >
-                    Back To Home
-                </Button>
+                        <Button variant="contained" color="success" fullWidth onClick={handleSubmit} sx={{ mb: 1 }}>
+                            Upload to Database
+                        </Button>
+                        <Button variant="outlined" fullWidth onClick={() => window.location.reload()}>
+                            Scan Next
+                        </Button>
+                    </Box>
+                )}
             </Paper>
-            <AppAlert
-                open={alertOpen}
-                message={alertMessage}
-                onClose={() => setAlertOpen(false)}
-            />
+            <AppAlert open={alertOpen} message={alertMessage} onClose={() => setAlertOpen(false)} />
         </Box>
     );
 };

@@ -1,8 +1,7 @@
 // matchStorage.js
 
-import { submitMatch as submitMatchRequest } from "../requests/ApiRequests";
 import QRCode from "qrcode";
-import { compressData } from "../pages/Common/Constants";
+import { submitMatch as submitMatchRequest } from "../requests/ApiRequests";
 
 // Track submissions in progress by their unsynced key.
 const submissionsInProgress = new Set();
@@ -16,39 +15,6 @@ export const generateKey = (
 ) =>
   `${reportId}_match_${eventKey}_${matchKey}_${station}_${userToken.id}${synced ? "_synced" : ""
   }`;
-
-export const saveMatch = (
-  matchData,
-  searchParams,
-  userToken,
-  submitAfter = true,
-  postSubmitCallback = null
-) => {
-  console.log("matchData", matchData);
-  console.log("searchParams", searchParams);
-  const syncedKey = generateKey(
-    matchData.reportId,
-    Object.fromEntries(searchParams),
-    userToken,
-    true
-  );
-  if (localStorage.getItem(syncedKey)) {
-    console.info(
-      `Match already synced (${syncedKey}). Saving locally skipped.`
-    );
-    return;
-  }
-  const unsyncedKey = generateKey(
-    matchData.reportId,
-    Object.fromEntries(searchParams),
-    userToken,
-    false
-  );
-  localStorage.setItem(unsyncedKey, JSON.stringify(matchData));
-  submitAfter
-    ? submitMatch(matchData, searchParams, userToken, postSubmitCallback)
-    : showQRCodePopup(matchData, searchParams);
-};
 
 export const loadMatch = (
   reportId,
@@ -161,35 +127,55 @@ export const resyncAllMatches = async () => {
   }
 };
 
-export const showQRCodePopup = (matchData, searchParams) => {
-  const { eventKey, matchKey, station } = Object.fromEntries(searchParams);
-  let data = { eventKey, matchKey, station, matchData };
-  compressData(data);
-  const jsonString = JSON.stringify(data);
-  const CHUNK_SIZE = 750; // Safe limit for dense QR codes
-  const totalChunks = Math.ceil(jsonString.length / CHUNK_SIZE);
-  const chunks = [];
+// ... existing imports and generateKey/loadMatch/submitMatch remain the same ...
 
-  for (let i = 0; i < totalChunks; i++) {
-    const chunkData = jsonString.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-    // Header format: "P<current>/<total>:<data>" -> e.g. "P1/3:{...}"
-    // This allows the scanner app to detect multipart and reassemble.
-    // Ensure index is 1-based for the header.
-    const header = totalChunks > 1 ? `P${i + 1}/${totalChunks}:` : "";
-    chunks.push(header + chunkData);
+export const saveMatch = (
+  matchData,
+  searchParams,
+  userToken,
+  submitAfter = true,
+  postSubmitCallback = null,
+  qrPayload = null // The binary string from Sidebar
+) => {
+  const syncedKey = generateKey(matchData.reportId, Object.fromEntries(searchParams), userToken, true);
+
+  if (localStorage.getItem(syncedKey)) {
+    console.info(`Match already synced (${syncedKey}). Saving locally skipped.`);
+    return;
   }
 
-  console.log("abcde", JSON.stringify(data));
+  const unsyncedKey = generateKey(matchData.reportId, Object.fromEntries(searchParams), userToken, false);
+  // Always save the full JSON to local storage as a backup
+  localStorage.setItem(unsyncedKey, JSON.stringify(matchData));
 
-  let currentIndex = 0;
+  if (submitAfter) {
+    submitMatch(matchData, searchParams, userToken, postSubmitCallback);
+  } else {
+    // Pass the tiny string if we have it, otherwise fallback to the object
+    showQRCodePopup(qrPayload || matchData, searchParams);
+  }
+};
 
+export const showQRCodePopup = (data, searchParams) => {
+  let qrString = "";
+
+  if (typeof data === "string") {
+    // 1. SUCCESS: Use our new tiny BinaryDTO string
+    qrString = data;
+  } else {
+    // 2. FALLBACK: If BinaryDTO failed, just use standard JSON
+    // We'll skip the buggy compressData and just stringify it.
+    console.warn("Binary payload missing, falling back to JSON");
+    const { eventKey, matchKey, station } = Object.fromEntries(searchParams);
+    qrString = JSON.stringify({ ...data, eventKey, matchKey, station });
+  }
+
+  // 2. Create the UI
   const overlay = document.createElement("div");
-  overlay.style.cssText =
-    "position:fixed;top:0;left:0;width:100vw;height:100vh;background-color:rgba(0,0,0,0.8);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999";
+  overlay.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background-color:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999";
 
   const container = document.createElement("div");
-  container.style.cssText =
-    "background-color:white;padding:20px;border-radius:12px;box-shadow:0 0 20px rgba(0,0,0,0.5);position:relative;display:flex;flex-direction:column;align-items:center;max-width:90vw;";
+  container.style.cssText = "background-color:white;padding:30px;border-radius:16px;position:relative;display:flex;flex-direction:column;align-items:center;max-width:90vw;";
 
   const closeButton = document.createElement("button");
   closeButton.textContent = "Close";
@@ -198,66 +184,26 @@ export const showQRCodePopup = (matchData, searchParams) => {
   container.appendChild(closeButton);
 
   const title = document.createElement("h2");
-  title.innerText = totalChunks > 1 ? `Part ${currentIndex + 1} of ${totalChunks}` : "Scan QR Code";
-  title.style.marginBottom = "10px";
+  title.innerText = "Scan Match Data";
+  title.style.marginBottom = "15px";
   container.appendChild(title);
 
   const qrImg = document.createElement("img");
-  qrImg.style.maxWidth = "80vh";
-  qrImg.style.maxHeight = "60vh";
+  qrImg.style.width = "400px";
+  qrImg.style.height = "400px";
   qrImg.style.border = "1px solid #ccc";
   container.appendChild(qrImg);
-
-  // Navigation container
-  const navContainer = document.createElement("div");
-  navContainer.style.marginTop = "15px";
-  navContainer.style.display = totalChunks > 1 ? "flex" : "none";
-  navContainer.style.gap = "20px";
-  container.appendChild(navContainer);
-
-  const prevBtn = document.createElement("button");
-  prevBtn.innerText = "Previous";
-  prevBtn.style.padding = "10px 20px";
-  prevBtn.style.fontSize = "18px";
-  prevBtn.onclick = () => {
-    if (currentIndex > 0) {
-      currentIndex--;
-      updateQR();
-    }
-  };
-  navContainer.appendChild(prevBtn);
-
-  const nextBtn = document.createElement("button");
-  nextBtn.innerText = "Next";
-  nextBtn.style.padding = "10px 20px";
-  nextBtn.style.fontSize = "18px";
-  nextBtn.onclick = () => {
-    if (currentIndex < totalChunks - 1) {
-      currentIndex++;
-      updateQR();
-    }
-  };
-  navContainer.appendChild(nextBtn);
 
   overlay.appendChild(container);
   document.body.appendChild(overlay);
 
-  const updateQR = () => {
-    title.innerText = totalChunks > 1 ? `Part ${currentIndex + 1} of ${totalChunks}` : "Scan QR Code";
-
-    // Update button states
-    prevBtn.disabled = currentIndex === 0;
-    nextBtn.disabled = currentIndex === totalChunks - 1;
-
-    QRCode.toDataURL(
-      chunks[currentIndex],
-      { width: 800, margin: 2, errorCorrectionLevel: "L" },
-      (err, url) => {
-        if (err) return console.error("Error generating QR code", err);
-        qrImg.src = url;
-      }
-    );
-  };
-
-  updateQR();
+  // 3. Generate the actual QR
+  QRCode.toDataURL(
+    qrString,
+    { width: 600, margin: 2, errorCorrectionLevel: "M" },
+    (err, url) => {
+      if (err) return console.error("Error generating QR code", err);
+      qrImg.src = url;
+    }
+  );
 };

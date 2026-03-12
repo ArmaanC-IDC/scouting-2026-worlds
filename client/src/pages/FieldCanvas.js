@@ -1,17 +1,17 @@
-import React, {
-  useRef,
-  useEffect,
-  useState,
-  useLayoutEffect,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
 import { Box } from "@mui/material";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import fullField from "../assets/scouting-2025/field/full_field.png"; // Make sure this path is correct
 import {
+  FIELD_ASPECT_RATIO,
   FIELD_VIRTUAL_HEIGHT,
   FIELD_VIRTUAL_WIDTH,
-  FIELD_ASPECT_RATIO,
   PERSPECTIVE,
   PHASES,
 } from "./ScoutMatch/Constants";
@@ -27,7 +27,7 @@ const getDefenseOffset = (isBlue, isDefending) => {
 }
 
 const getDefenseButtonOffset = (isBlue, isDefending, matchPhase) => {
-  if (!isDefending || matchPhase===PHASES.POST_MATCH) return 0;
+  if (!isDefending || matchPhase === PHASES.POST_MATCH) return 0;
   return isBlue ? -0.14 : 0.14;
 }
 

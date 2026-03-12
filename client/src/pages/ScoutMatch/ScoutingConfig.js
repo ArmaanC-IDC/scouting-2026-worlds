@@ -1,11 +1,8 @@
-import { bgcolor } from "@mui/system";
 import {
-  PHASES,
-  CYCLE_TYPES,
   COLORS,
+  CYCLE_TYPES,
   GAME_LOCATIONS,
-  ENDGAME_ROLES,
-  DISABLED_STATUS
+  PHASES
 } from "./Constants";
 import { StartingPositionSlider } from "./CustomFieldComponents";
 
@@ -36,7 +33,7 @@ const finishUnfinished = (match) => {
 };
 
 export const SCOUTING_CONFIG = {
- STARTING_LINE: {
+  STARTING_LINE: {
     phases: [PHASES.PRE_MATCH],
     positions: { PRELOAD: [880, 650] },
     dimensions: { width: 0, height: 1410 },
@@ -79,7 +76,7 @@ export const SCOUTING_CONFIG = {
         fontWeight: 400,
       }
     },
-    showFunction: (match, key) => match.cycles.filter(c => c.type===CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1,
+    showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1,
     onClick: (match, key) => {
       match.setActiveCycle({
         type: CYCLE_TYPES.SHOOTING,
@@ -98,7 +95,7 @@ export const SCOUTING_CONFIG = {
     phases: [PHASES.AUTO, PHASES.TELE],
     positions: { TOWER: [300, 800] },
     dimensions: { width: 500, height: 300 },
-    showFunction: (match, key) => match.cycles.filter(c => c.type===CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1,
+    showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1,
     textFunction: (match, key) => "HANG",
     color: COLORS.HANG_DEFENSE,
     onClick: (match, key) => {
@@ -121,7 +118,7 @@ export const SCOUTING_CONFIG = {
     positions: { DEPOT: [500, 518] },
     dimensions: { width: 700, height: 250 },
     textFunction: (match, key) => "Alliance Zone Intake",
-    showFunction: (match, key) => match.cycles.filter(c => c.type===CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1 && !match.isDefending(),
+    showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1 && !match.isDefending(),
     color: COLORS.INTAKE, // Using the color from Constants.js
     fontSize: 71,
     // When clicked, it starts an INTAKE cycle with the specific location
@@ -141,7 +138,7 @@ export const SCOUTING_CONFIG = {
     phases: [PHASES.AUTO, PHASES.TELE],
     // Replace with your desired coordinates
     positions: { ZONE: [1650, 800] },
-    showFunction: (match, key) => match.cycles.filter(c => c.type===CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 0 && !match.isDefending(),
+    showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 0 && !match.isDefending(),
     dimensions: { width: 950, height: 300 },
     textFunction: (match, key) => "Neutral Zone Intake",
     color: COLORS.INTAKE, // Using the color from Constants.js
@@ -168,7 +165,7 @@ export const SCOUTING_CONFIG = {
     dimensions: { width: 800, height: 300 },
     textFunction: (match, key) => "BYPASS",
     color: COLORS.SHOOT, // Using a primary/active color
-    showFunction: (match, key) => 
+    showFunction: (match, key) =>
       key === "ALLIANCE_ZONE" ? !match.isDefending() : match.isDefending(),
     // showFunction: (match, key) => ,
     fontSize: 90,
@@ -194,13 +191,13 @@ export const SCOUTING_CONFIG = {
     dimensions: { width: 450, height: 450 },
     textFunction: (match, key) => {
       if (key === 'UNDO' && match.canUndo()) {
-          return `Undo: ${match.lastUndoMessage}`; // <-- Displays the message
+        return `Undo: ${match.lastUndoMessage}`; // <-- Displays the message
       }
       else if (key === 'REDO' && match.canRedo()) {
         return (`Redo: ${match.redoMessage}`)
       }
       return key;
-  },
+    },
 
     onClick: (match, key) => {
       if (key === "UNDO") {
@@ -245,12 +242,12 @@ export const SCOUTING_CONFIG = {
     dimensions: { width: 950, height: 250 },
     textFunction: (match, key) => match.isDefending() ? "End Defend/Steal" : "Start Defense/Steal",
     color: COLORS.HANG_DEFENSE,
-    showFunction: (match, key) => match.cycles.filter(c => c.type===CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 0,
+    showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 0,
     onClick: (match, key) => {
       if (match.isDefending()) {
         match.setDefenseCycle(
           prev => { return { ...prev.defenseCycle, endTime: match.getCurrentTime() } },
-        `End Defense/Steal`); // End defense
+          `End Defense/Steal`); // End defense
       } else {
         match.setDefenseCycle({
           type: CYCLE_TYPES.DEFENSE,

@@ -12,9 +12,9 @@ export const postImportMatches = async (event_code) => {
   return api.post(`/matches`, { event_code }, { headers: getAuthHeaders() });
 };
 
-export const getScoutMatch = async ({ eventKey, station, matchKey }) => {
+export const getScoutMatch = async ({ eventKey, station, matchKey, scoutId }) => {
   return api.get(`/getScoutMatch`, {
-    params: { eventKey, station, matchKey },
+    params: { eventKey, station, matchKey, scoutId },
     headers: getAuthHeaders(),
   });
 };

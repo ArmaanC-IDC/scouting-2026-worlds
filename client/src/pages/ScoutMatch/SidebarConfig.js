@@ -1,12 +1,12 @@
+import { BinaryDTO } from "../../storage/BinaryDTO";
 import { saveMatch } from "../../storage/MatchStorageManager";
+import { MATCH_SCHEMA, prepareMatchForDTO } from "../../storage/ScoutingSchema";
 import {
-  PHASES,
   COLORS,
   CYCLE_TYPES,
-  BPS_RANGES,
   HANG_LEVELS,
+  PHASES
 } from "./Constants";
-import { useNavigate } from "react-router-dom";
 
 const exists = (val) => {
   return val !== null && val !== undefined
@@ -113,9 +113,9 @@ export const SIDEBAR_CONFIG = [
 
     // This is the magic: Show only if the cycle is HANG and a level IS set.
     show: (match) =>
-      match.activeCycle?.type === CYCLE_TYPES.HANG && 
-        ((!!match.activeCycle.location && !exists(match.activeCycle.endTime)) ||
-        (match.phase===PHASES.AUTO && !exists(match.activeCycle.endTime)))
+      match.activeCycle?.type === CYCLE_TYPES.HANG &&
+      ((!!match.activeCycle.location && !exists(match.activeCycle.endTime)) ||
+        (match.phase === PHASES.AUTO && !exists(match.activeCycle.endTime)))
   },
 
   // ---------- DEFENSE & CONTACT (Contextual) ----------
@@ -181,8 +181,8 @@ export const SIDEBAR_CONFIG = [
           robot: match.scoutData.teamNumber,
           scoutId: match.userToken.id,
           scoutName: match.userToken.username,
-          cycles: match.cycles.map(c => [CYCLE_TYPES.BYPASS, CYCLE_TYPES.SHOOTING].includes(c.type) ? 
-            {...c, rate: match.endgame[c.type===CYCLE_TYPES.BYPASS ? "bypassRate" : "shotRate"]}
+          cycles: match.cycles.map(c => [CYCLE_TYPES.SNOWBALL, CYCLE_TYPES.SHOOTING].includes(c.type) ?
+            { ...c, rate: match.endgame[c.type === CYCLE_TYPES.SNOWBALL ? "snowballRate" : "shotRate"] }
             : c
           ),
           endgame: match.endgame,
@@ -214,37 +214,28 @@ export const SIDEBAR_CONFIG = [
     phases: [PHASES.POST_MATCH],
     id: "submitMatchQR",
     positions: ["submitQR"],
-    flexWeight: 1.5,
-
     label: () => "Submit Match (QR)",
-
     onClick: (match) => {
+      // 1. Use the helper function to clean the spaghetti
+      const matchToPack = prepareMatchForDTO(match);
 
-      const matchData = {
-        reportId: match.scoutData.reportId,
-        matchStartTime: match.matchStartTime,
-        robot: match.scoutData.teamNumber,
-        scoutId: match.userToken.id,
-        scoutName: match.userToken.username,
-        cycles: match.cycles.map(c => [CYCLE_TYPES.BYPASS, CYCLE_TYPES.SHOOTING].includes(c.type) ? 
-          {...c, rate: match.endgame[c.type===CYCLE_TYPES.BYPASS ? "bypassRate" : "shotRate"]}
-          : c
-        ),
-        endgame: match.endgame,
-      };
-      const params = Object.fromEntries(match.searchParams);
+      // 2. Pack it using the Master Schema
+      const packer = new BinaryDTO(MATCH_SCHEMA);
+      const qrPayload = packer.pack(matchToPack);
 
-      console.log("matchData", matchData);
-      console.log(params);
-
+      // 3. Save it
       saveMatch(
-        { ...matchData, ...params },
+        matchToPack,
         match.searchParams,
         match.userToken,
-        false // submitAfter = false → QR MODE
+        false,
+        null,
+        qrPayload
       );
+      console.log("Match: ", match);
+      console.log("Packaged Match: ", matchToPack);
+      console.log(`Binary Payload: ${qrPayload}`);
     },
-
     color: () => COLORS.INFO,
     show: () => true
   },
