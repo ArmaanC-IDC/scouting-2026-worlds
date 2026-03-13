@@ -9,6 +9,7 @@ Athrun
 
 TODO:
  - Add Confirm button after "to endgame"
+ - Add Feed Tracking
  - Compress QR codes
 
  - Add name search for teams
