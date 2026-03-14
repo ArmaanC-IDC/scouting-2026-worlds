@@ -127,6 +127,7 @@ const ScoutMatch = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
+  const [currentTime, setCurrentTime] = useState("");
 
   const showAlert = (message) => {
       setAlertMessage(message);
@@ -260,6 +261,7 @@ const ScoutMatch = () => {
 
   const { state, setState, undo, redo, canUndo, canRedo, reset, lastUndoMessage, redoMessage } = useHistoryState(initialMatchData);
 
+  let _ = setInterval(() => setCurrentTime(getCurrentTime), 1000);
   // ===================================================================================
   // 3. === CRITICAL CHANGE === "Smart" Setters for the new state structure
   // ===================================================================================
@@ -408,7 +410,7 @@ const ScoutMatch = () => {
     isDefending,
     searchParams,
     setSearchParams,
-    getCurrentTime,
+    getCurrentTime, currentTime,
     isScoutingRed: isScoutingRed(),
     isScoringTableFar: isScoringTableFar(),
     scoutData,

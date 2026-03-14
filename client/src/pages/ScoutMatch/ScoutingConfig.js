@@ -2,7 +2,8 @@ import {
   COLORS,
   CYCLE_TYPES,
   GAME_LOCATIONS,
-  PHASES
+  PHASES,
+  AUTO_MAX_TIME
 } from "./Constants";
 import { StartingPositionSlider } from "./CustomFieldComponents";
 
@@ -232,7 +233,10 @@ export const SCOUTING_CONFIG = {
         match.phase === PHASES.AUTO ? "To TeleOp" : "To Endgame"
       );
     },
-    color: COLORS.SUCCESS,
+    sx: (match) => {return {
+      backgroundColor: match.currentTime===AUTO_MAX_TIME ? "#ff0000" : match.phase===PHASES.AUTO ? "#aa0000" : "#0000aa",
+      border: match.currentTime===AUTO_MAX_TIME ? "100px solid black" : "10px solid black"
+    }}
   },
 
   DEFENSE_TOGGLE: {
