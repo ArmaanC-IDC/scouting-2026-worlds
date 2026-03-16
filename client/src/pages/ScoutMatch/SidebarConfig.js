@@ -194,15 +194,8 @@ export const SIDEBAR_CONFIG = [
         (response) => {
           if (response?.status === 200) {
             match.showAlert("Match submitted successfully!");
-            match.setScoutData(null);
-            match.setSearchParams({
-              eventKey: match.searchParams.get("eventKey"),
-              matchKey: match.scoutData.nextMatchKey,
-              station: match.searchParams.get("station"),
-            });
-            match.navigate(`/scoutMatch?eventKey=${match.searchParams.get("eventKey")}&matchKey=${match.scoutData.nextMatchKey}&station=${match.searchParams.get("station")}`)
           } else {
-            match.showAlert("Submission failed — saved locally for resync.");
+            match.showAlert("Submission failed." + response.data.message);
           }
         }
       );
