@@ -234,8 +234,22 @@ export const SCOUTING_CONFIG = {
         match.phase === PHASES.AUTO ? "To TeleOp" : "To Endgame"
       );
     },
-    sx: (match, currentTime) => {console.log(currentTime, AUTO_MAX_TIME); return {
-      backgroundColor: match.phase === PHASES.TELE ? "#8888dd" : (match.currentTime===AUTO_MAX_TIME ? "#ff0000" : "#aa0000"),
+    sx: (match, currentTime) => {return {
+      //if teleop, make it a dull blue. If auto and not done, make dull red. If auto is done, make it bright green
+      backgroundColor: match.phase === PHASES.TELE ? 
+        "#8888dd" : 
+        (currentTime===AUTO_MAX_TIME 
+          ? ("#00ff00")
+          : "#aa0000"
+        ),
+      
+      //if teleop, make it white. If auto and not done, make it white. If auto is done, make it black
+      color: match.phase === PHASES.TELE ? 
+        "#ffffff" : 
+        (currentTime===AUTO_MAX_TIME 
+          ? ("#000000")
+          : "#ffffff"
+        ),
     }}
   },
 

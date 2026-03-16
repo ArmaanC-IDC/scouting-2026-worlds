@@ -49,16 +49,18 @@ const aspectRatio = 16 / 9;
 
 const MatchContext = createContext();
 
+//helper functions
 const exists = (val) => {
   return val !== null && val !== undefined;
 };
 
+//#region timer stuff
 // 1. Create the context
 const TimerContext = createContext(0);
 
 // 2. Create the Provider component
 // It will take phase and matchStartTime as props so it can calculate the time
-const TimerProvider = ({ children, phase, matchStartTime }) => {
+const TimerProvider = ({ children, phase, matchStartTime, match }) => {
   const [currentTime, setCurrentTime] = useState(0);
 
   useEffect(() => {
@@ -73,11 +75,12 @@ const TimerProvider = ({ children, phase, matchStartTime }) => {
     };
 
     // This interval now only affects the state within this provider
-    const interval = setInterval(() => {
-      setCurrentTime(getCurrentTime());
-    }, 500); // Update every half-second for smoother display
-
-    return () => clearInterval(interval);
+    if ([PHASES.AUTO, PHASES.TELE].includes(match.phase)) {
+      const interval = setInterval(() => {
+        setCurrentTime(getCurrentTime());
+      }, 100); // Update every 0.1s for smoother display
+      return () => clearInterval(interval);
+    }
   }, [phase, matchStartTime]);
 
   return (
@@ -92,10 +95,101 @@ const useTimer = () => {
   return useContext(TimerContext);
 };
 
+//#endregion
+
+
+
+//(FieldButton, ScoutingConfigButton, SidebarButton)
+//#region custom components 
+const FieldButton = ({ children, sx, drawBorder, fontSize, scaleWidthToActual, ...props }) => {
+  return (
+    <Button
+      variant="contained"
+      sx={{
+        ...sx,
+        width: "100%", height: "100%",
+        minWidth: 0, minHeight: 0,
+        padding: 0, margin: 0,
+        fontSize: scaleWidthToActual(fontSize) + "px",
+        border: drawBorder ? scaleWidthToActual(25) + "px solid black" : scaleWidthToActual(15) + "px solid black",
+        transition: 'transform 0.15s ease-in-out, box-shadow 1s ease-in-out',
+        transform: drawBorder ? 'scale(1.2)' : 'scale(1)',
+        boxShadow: drawBorder ? '0px 4px 20px rgba(0,0,0,0.4)' : '0px rgba(0,0,0,0)',
+      }}
+      {...props}
+    >{children}</Button>
+  );
+};
+
+const ScoutingConfigButton = ({ config, positionKey, match, scaleWidthToActual }) => {
+  const currentTime = useTimer(); 
+  
+  const isNotShowing = config.showFunction && !config.showFunction(match, positionKey);
+  if (isNotShowing) return null;
+
+  const isDisabled = config.disabled && config.disabled(match, positionKey);
+  const isSelected = config.isSelected && config.isSelected(match, positionKey);
+  
+  const sx = (config.sx && config.sx(match, currentTime)) || {};
+
+  return config.componentFunction != null ? (
+    config.componentFunction(match, positionKey)
+  ) : (
+    <FieldButton
+      sx={{
+        pointerEvents: "auto",
+        borderRadius: config.isCircle ? "50%" : "2%",
+        opacity: isSelected ? 1 : 0.68,
+        border: isSelected ? "10px solid black" : "5px solid black",
+        ...sx
+      }}
+      fontSize={config.fontSize || 60}
+      drawBorder={isSelected}
+      disabled={isDisabled}
+      color={config.color || COLORS.ACTIVE}
+      onClick={() => config.onClick && config.onClick(match, positionKey, currentTime)}
+      scaleWidthToActual={scaleWidthToActual}
+    >
+      {config.textFunction && config.textFunction(match, positionKey)}
+    </FieldButton>
+  );
+};
+
+const SidebarButton = ({
+  match, id, flexWeight = 1, label, onClick, color, disabled = false, sx = {}, show = true, scaleWidthToActual
+}) => {
+  const currentTime = useTimer();
+  const [animating, setAnimating] = useState(false);
+  const onClickKeyframes = { '0%': { transform: 'scale(1)' }, '50%': { transform: 'scale(1.2)' }, '100%': { transform: 'scale(1)' }, };
+  if (!show) return null;
+  return (
+    <Button
+      variant="contained" color={color && color(match, id) || COLORS.ACTIVE} disabled={disabled}
+      onClick={() => {
+        setAnimating(true);
+        setTimeout(() => { setAnimating(false); onClick(match, id, currentTime); }, 100);
+      }}
+      sx={{
+        width: "90%", height: "95%",
+        fontSize: scaleWidthToActual(100) + "px",
+        borderRadius: scaleWidthToActual(150) + "px",
+        left: "5%",
+        '@keyframes onClick': onClickKeyframes,
+        animation: animating ? 'onClick 0.1s ease' : 'none',
+        ...sx,
+      }}
+    >{label && label(match, id) || label || ""}</Button>
+  );
+}
+
+//#endregion
+
 // Scout Match Component
 const ScoutMatch = () => {
   const navigate = useNavigate();
 
+  //required params like usertoken, eventkey, matchkey, station, etc.
+  //#region required params
   const [userToken, setUserToken] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchParamsError, setSearchParamsError] = useState(null);
@@ -149,6 +243,8 @@ const ScoutMatch = () => {
   const driverStation = searchParams.get("station");
   const scoutPerspective = searchParams.get("perspective") || SCORING_TABLE_FAR;
 
+  //#endregion
+
   const [scoutData, setScoutData] = useState(null);
   const [matchStartTime, setMatchStartTime] = useState(null);
 
@@ -165,7 +261,7 @@ const ScoutMatch = () => {
   const isUndoingRef = useRef(false);
 
   // ===================================================================================
-  // 1. Your Custom Hook for Managing State History (Undo/Redo) - UNCHANGED
+  // #region useHistoryState Hook
   // ===================================================================================
   const useHistoryState = (initialState) => {
     const [historyState, setHistoryState1] = useState(() => ({
@@ -261,9 +357,10 @@ const ScoutMatch = () => {
 
     return { state, setState, undo, redo, canUndo, canRedo, reset, lastUndoMessage, redoMessage };
   };
+  //#endregion
 
   // ===================================================================================
-  // 2. === CRITICAL CHANGE === Updated Centralized State for REBUILT 2026
+  // #region initial state and setters
   // ===================================================================================
   const initialMatchData = {
     phase: PHASES.PRE_MATCH,
@@ -288,10 +385,6 @@ const ScoutMatch = () => {
   };
 
   const { state, setState, undo, redo, canUndo, canRedo, reset, lastUndoMessage, redoMessage } = useHistoryState(initialMatchData);
-
-  // ===================================================================================
-  // 3. === CRITICAL CHANGE === "Smart" Setters for the new state structure
-  // ===================================================================================
 
   const createSetter = (key) => (value, undoMessage) => {
     setState(prev => {
@@ -333,6 +426,8 @@ const ScoutMatch = () => {
     endgame
   } = state;
 
+  //#endregion
+
   // This function is adapted to the new state model
   const isDefending = () => state.defenseCycle && exists(state.defenseCycle.startTime) && !exists(state.defenseCycle.endTime);
 
@@ -354,14 +449,6 @@ const ScoutMatch = () => {
     return { width, height };
   };
   const [scaledBoxRect, setScaledBoxRect] = useState(getScaledBoxDimensions());
-
-  const scaleWidthToActual = (virtualValue, matchContext = null) =>
-    (virtualValue / virtualWidth) *
-    (matchContext?.scaledBoxRect || scaledBoxRect).width;
-
-  const scaleHeightToActual = (virtualValue, matchContext = null) =>
-    (virtualValue / virtualHeight) *
-    (matchContext?.scaledBoxRect || scaledBoxRect).height;
 
   let fetching = false;
   const fetchScoutMatchData = async () => {
@@ -387,6 +474,14 @@ const ScoutMatch = () => {
     const seconds = totalSeconds % 60;
     return `${String(minutes).padStart(1, "0")}:${String(seconds).padStart(2, "0")}`;
   };
+
+  const scaleWidthToActual = (virtualValue, matchContext = null) =>
+    (virtualValue / virtualWidth) *
+    (matchContext?.scaledBoxRect || scaledBoxRect).width;
+
+  const scaleHeightToActual = (virtualValue, matchContext = null) =>
+    (virtualValue / virtualHeight) *
+    (matchContext?.scaledBoxRect || scaledBoxRect).height;
 
   const isScoutingRed = () => [R1, R2, R3].includes(driverStation);
   const isScoringTableFar = () => scoutPerspective === SCORING_TABLE_FAR;
@@ -439,7 +534,6 @@ const ScoutMatch = () => {
 
 
   useEffect(() => {
-    console.log("in useEffect");
     if (isUndoingRef.current) {
       isUndoingRef.current = false;
       return;
@@ -520,61 +614,6 @@ const ScoutMatch = () => {
     );
   };
 
-  const FieldButton = ({ children, sx, drawBorder, fontSize, ...props }) => {
-    return (
-      <Button
-        variant="contained"
-        sx={{
-          ...sx,
-          width: "100%", height: "100%",
-          minWidth: 0, minHeight: 0,
-          padding: 0, margin: 0,
-          fontSize: scaleWidthToActual(fontSize) + "px",
-          border: drawBorder ? scaleWidthToActual(25) + "px solid black" : scaleWidthToActual(15) + "px solid black",
-          transition: 'transform 0.15s ease-in-out, box-shadow 1s ease-in-out',
-          transform: drawBorder ? 'scale(1.2)' : 'scale(1)',
-          boxShadow: drawBorder ? '0px 4px 20px rgba(0,0,0,0.4)' : '0px rgba(0,0,0,0)',
-        }}
-        {...props}
-      >{children}</Button>
-    );
-  };
-
-  // 1. Create a dedicated component for the config-based buttons
-  const ScoutingConfigButton = ({ config, positionKey, match }) => {
-    const currentTime = useTimer(); 
-    
-    const isNotShowing = config.showFunction && !config.showFunction(match, positionKey);
-    if (isNotShowing) return null;
-
-    const isDisabled = config.disabled && config.disabled(match, positionKey);
-    const isSelected = config.isSelected && config.isSelected(match, positionKey);
-    
-    const sx = (config.sx && config.sx(match, currentTime)) || {};
-
-    return config.componentFunction != null ? (
-      config.componentFunction(match, positionKey)
-    ) : (
-      <FieldButton
-        sx={{
-          pointerEvents: "auto",
-          borderRadius: config.isCircle ? "50%" : "2%",
-          opacity: isSelected ? 1 : 0.68,
-          border: isSelected ? "10px solid black" : "5px solid black",
-          ...sx
-        }}
-        fontSize={config.fontSize || 60}
-        drawBorder={isSelected}
-        disabled={isDisabled}
-        color={config.color || COLORS.ACTIVE}
-        onClick={() => config.onClick && config.onClick(match, positionKey, currentTime)}
-      >
-        {config.textFunction && config.textFunction(match, positionKey)}
-      </FieldButton>
-    );
-  };
-
-  // 2. Update your creation helper to use that component
   const createScoutingConfigChild = (config, key) => {
     const [x, y] = config.positions[key];
     if (!config.phases.includes(phase)) return null;
@@ -596,39 +635,13 @@ const ScoutMatch = () => {
               config={config} 
               positionKey={key} 
               match={match} 
+              scaleWidthToActual={scaleWidthToActual}
             />
           )}
         </MatchContext.Consumer>
       </FieldLocalComponent>
     );
   };
-
-  const SidebarButton = ({
-    match, id, flexWeight = 1, label, onClick, color, disabled = false, sx = {}, show = true,
-  }) => {
-    const currentTime = useTimer();
-    const [animating, setAnimating] = useState(false);
-    const onClickKeyframes = { '0%': { transform: 'scale(1)' }, '50%': { transform: 'scale(1.2)' }, '100%': { transform: 'scale(1)' }, };
-    if (!show) return null;
-    return (
-      <Button
-        variant="contained" color={color && color(match, id) || COLORS.ACTIVE} disabled={disabled}
-        onClick={() => {
-          setAnimating(true);
-          setTimeout(() => { setAnimating(false); onClick(match, id, currentTime); }, 100);
-        }}
-        sx={{
-          width: "90%", height: "95%",
-          fontSize: scaleWidthToActual(100) + "px",
-          borderRadius: scaleWidthToActual(150) + "px",
-          left: "5%",
-          '@keyframes onClick': onClickKeyframes,
-          animation: animating ? 'onClick 0.1s ease' : 'none',
-          ...sx,
-        }}
-      >{label && label(match, id) || label || ""}</Button>
-    );
-  }
 
   const ScoutingConfigChildren = Object.values(SCOUTING_CONFIG).map((config) => {
     if (!config.phases.includes(phase)) {
@@ -653,7 +666,7 @@ const ScoutMatch = () => {
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: scaleWidthToActual(100) + "px",
             }}>
-              <FieldButton color={COLORS.PRIMARY}>{field.label}</FieldButton>
+              <FieldButton color={COLORS.PRIMARY} scaleWidthToActual={scaleWidthToActual}>{field.label}</FieldButton>
             </Box>
           );
 
@@ -672,6 +685,7 @@ const ScoutMatch = () => {
                       color={COLORS.PENDING}
                       onClick={() => match.setEndgame({ [field.id]: values[idx] })}
                       drawBorder={match.endgame[field.id] == values[idx]}
+                      scaleWidthToActual={scaleWidthToActual}
                     >{opt}</FieldButton>
                   </Box>
                 ))}
@@ -688,7 +702,7 @@ const ScoutMatch = () => {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: scaleWidthToActual(100) + "px",
               }}>
-                <FieldButton color={COLORS.PRIMARY}>{field.label}</FieldButton>
+                <FieldButton color={COLORS.PRIMARY} scaleWidthToActual={scaleWidthToActual}>{field.label}</FieldButton>
               </Box>
             );
             const options = field.options;
@@ -735,6 +749,7 @@ const ScoutMatch = () => {
                         }}
                         drawBorder={isSelected}
                         fontSize={50}
+                        scaleWidthToActual={scaleWidthToActual}
                       >
                         {opt}
                       </FieldButton>
@@ -871,6 +886,7 @@ const ScoutMatch = () => {
               sx={item.sx}
               flexWeight={item.flexWeight || 1}
               disabled={item.isDisabled && item.isDisabled(match, key)}
+              scaleWidthToActual={scaleWidthToActual}
             />
           </Box>
         );
@@ -911,7 +927,7 @@ const ScoutMatch = () => {
 
   return (
     <MatchContext.Provider value={CONTEXT_WRAPPER}>
-      <TimerProvider phase={phase} matchStartTime={matchStartTime}>
+      <TimerProvider phase={phase} matchStartTime={matchStartTime} match={CONTEXT_WRAPPER}>
         <ThemeProvider theme={getTheme()}>
           <Box sx={{ position: "relative", width: "100vw", height: "100vh", bgcolor: "black" }}>
             {/* <FullscreenDialog /> */}
