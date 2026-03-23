@@ -185,41 +185,41 @@ export const SCOUTING_CONFIG = {
     },
   },
 
-  DEFENSE_STEAL: {
-    phases: [PHASES.TELE],
-    // New interaction
-    positions: { STEAL: [2800, 500] },
-    dimensions: { width: 800, height: 400 },
-    showFunction: (match, key) => match.isDefending(),
-    textFunction: (match, key) => "STEAL",
-    color: COLORS.INTAKE,
-    fontSize: 70,
-    onClick: (match, key, currentTime) => {
-      match.setActiveCycle({
-        type: CYCLE_TYPES.INTAKE,
-        phase: match.phase,
-        location: GAME_LOCATIONS.OPPONENT_ALLIANCE_ZONE,
-        startTime: currentTime
-      }, `Start Intake (Steal) Cycle`);
-    },
-    isSelected: (match, key) =>
-      match.activeCycle?.type === CYCLE_TYPES.INTAKE && match.activeCycle?.location === GAME_LOCATIONS.OPPONENT_ALLIANCE_ZONE,
-  },
+  // DEFENSE_STEAL: {
+  //   phases: [PHASES.TELE],
+  //   // New interaction
+  //   positions: { STEAL: [2800, 500] },
+  //   dimensions: { width: 800, height: 400 },
+  //   showFunction: (match, key) => match.isDefending(),
+  //   textFunction: (match, key) => "STEAL",
+  //   color: COLORS.INTAKE,
+  //   fontSize: 70,
+  //   onClick: (match, key, currentTime) => {
+  //     match.setActiveCycle({
+  //       type: CYCLE_TYPES.INTAKE,
+  //       phase: match.phase,
+  //       location: GAME_LOCATIONS.OPPONENT_ALLIANCE_ZONE,
+  //       startTime: currentTime
+  //     }, `Start Intake (Steal) Cycle`);
+  //   },
+  //   isSelected: (match, key) =>
+  //     match.activeCycle?.type === CYCLE_TYPES.INTAKE && match.activeCycle?.location === GAME_LOCATIONS.OPPONENT_ALLIANCE_ZONE,
+  // },
 
-  DEFENSE_CONTACT: {
-    phases: [PHASES.TELE],
-    positions: { CONTACT: [2800, 1200] }, // Replaces BYPASS position
-    dimensions: { width: 800, height: 400 },
-    showFunction: (match, key) => match.isDefending(),
-    textFunction: (match, key) => "CONTACT",
-    color: COLORS.HANG_DEFENSE,
-    fontSize: 90,
-    onClick: (match, key, currentTime) => {
-      startNewCycle(match, CYCLE_TYPES.CONTACT, currentTime);
-    },
-    isSelected: (match, key) =>
-      match.activeCycle?.type === CYCLE_TYPES.CONTACT,
-  },
+  // DEFENSE_CONTACT: {
+  //   phases: [PHASES.TELE],
+  //   positions: { CONTACT: [2800, 1200] }, // Replaces BYPASS position
+  //   dimensions: { width: 800, height: 400 },
+  //   showFunction: (match, key) => match.isDefending(),
+  //   textFunction: (match, key) => "CONTACT",
+  //   color: COLORS.HANG_DEFENSE,
+  //   fontSize: 90,
+  //   onClick: (match, key, currentTime) => {
+  //     startNewCycle(match, CYCLE_TYPES.CONTACT, currentTime);
+  //   },
+  //   isSelected: (match, key) =>
+  //     match.activeCycle?.type === CYCLE_TYPES.CONTACT,
+  // },
 };
 
 export const ENDGAME_CONFIG = [

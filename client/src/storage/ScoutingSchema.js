@@ -11,7 +11,7 @@ export const DTO_MAPS = {
   accuracy: ["NONE", "Low", "Med", "High", "Perfect"],
   hangLevels: ["NONE", ...Object.keys(HANG_LEVELS)], // ["NONE", "LEVEL_1", "LEVEL_2", "LEVEL_3"] <- remove later
   cycleTypes: ["NONE", ...Object.keys(CYCLE_TYPES)],
-  locations: ["NONE", ...Object.keys(GAME_LOCATIONS), "CLOSE", "FAR", "BUMP", "TRENCH", ...Object.keys(HANG_LEVELS), ...sliderPositions],
+  locations: ["NONE", ...Object.keys(GAME_LOCATIONS), "CLOSE", "FAR", "ALL_BUMP", "ALL_TRENCH", "OPP_BUMP", "OPP_TRENCH", ...Object.keys(HANG_LEVELS), ...sliderPositions],
   phases: ["NONE", ...Object.keys(PHASES)],
   roles: ["NONE", ...Object.values(ENDGAME_ROLES)],
   rates: [0, 1, 3, 6, 9], // Mapping BPS_RANGES values to simple indices
@@ -51,7 +51,8 @@ export const MATCH_SCHEMA = [
       { key: "location", type: "uint8", map: DTO_MAPS.locations },
       { key: "pinCount", type: "uint8" },   // Separate for Contact
       { key: "foulCount", type: "uint8" },  // Separate for Contact
-      { key: "success", type: "bool" }
+      { key: "success", type: "bool" },
+      { key: "count", type: "uint8" },
     ]
   },
   { key: "comments", type: "string" }
@@ -120,7 +121,8 @@ export const prepareMatchForDTO = (matchState) => {
         location: String(c.location || "NONE").toUpperCase(),
         pinCount: c.pinCount || 0,
         foulCount: c.foulCount || 0,
-        success: c.success !== undefined ? c.success : true
+        success: c.success !== undefined ? c.success : true,
+        count: c.count || 0,
       };
     }),
     comments: comments

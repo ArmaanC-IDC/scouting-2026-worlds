@@ -26,9 +26,12 @@ export const calculateReportTotals = (report) => {
   const DEFAULT_PHASE_STRUCTURE = {
     fuel: {
       shotRateSum: 0,
+      shotCount: 0,         // <-- NEW: Added exact count for shots
       numShotCycles: 0,
       bypassRateSum: 0,
+      bypassCount: 0,       // <-- NEW: Added exact count for feeds/bypasses
       numBypassCycles: 0,
+      intakeCount: 0,       // <-- NEW: Added exact count for intake/steals
       shootingTime: 0,
       bypassingTime: 0,
       intakingTime: 0,
@@ -82,7 +85,6 @@ export const calculateReportTotals = (report) => {
 
   // Guard: if no cycles, return early (but still return base structure)
   if (!Array.isArray(report.cycles) || report.cycles.length === 0) {
-    // derived metrics already 0/null; return
     return results;
   }
 
@@ -96,9 +98,12 @@ export const calculateReportTotals = (report) => {
     const startTime = cycle.start_time !== undefined ? cycle.start_time : null;
     const endTime = cycle.end_time !== undefined ? cycle.end_time : null;
     const location = cycle.location !== undefined ? cycle.location : null;
-    const cycleTime = endTime - startTime;;
+    const cycleTime = endTime - startTime; // <-- Fixed double semicolon
     const attainedLocationRaw = cycle.attained_location !== undefined ? cycle.attained_location : null;
     const attainedLocation = parseAttainedLocation(attainedLocationRaw);
+
+    // <-- NEW: Extract the raw count from the frontend
+    let count = cycle.count !== undefined && cycle.count !== null ? Number(cycle.count) : 0;
 
     switch (cycleType) {
       case "AUTO_MOVEMENT": {
@@ -115,31 +120,35 @@ export const calculateReportTotals = (report) => {
       }
 
       case "SHOOT":
+      case "SHOOTING": // Adding frontend exact matches just in case
       case "BYPASS":
+      case "FEED":
       case "INTAKE": {
-        // Calculate count using rate * duration if available
         const rate = cycle.rate || 0;
 
-        // If rate is provided (items/sec) and we have a duration, calculate total items
-        if (rate > 0 && startTime !== null && endTime !== null) {
-          const duration = endTime - startTime;
+        // NEW: Fallback -> If count isn't provided but rate (items/sec) and duration exist, estimate total items
+        if (count === 0 && rate > 0 && cycleTime > 0) {
+          count = Math.round(rate * (cycleTime / 1000));
         }
 
         // Intake -> Attained
         if (cycleType === "INTAKE") {
           phaseResults.fuel.intakingTime += cycleTime;
+          phaseResults.fuel.intakeCount += count;
         }
         // Shoot -> Shot (Score)
-        else if (cycleType === "SHOOT") {
+        else if (cycleType === "SHOOT" || cycleType === "SHOOTING") {
           phaseResults.fuel.numShotCycles += 1;
           phaseResults.fuel.shotRateSum += rate;
           phaseResults.fuel.shootingTime += cycleTime;
+          phaseResults.fuel.shotCount += count;
         }
         // Bypass -> Feed
-        else if (cycleType === "BYPASS") {
+        else if (cycleType === "BYPASS" || cycleType === "FEED") {
           phaseResults.fuel.numBypassCycles += 1;
           phaseResults.fuel.bypassRateSum += rate;
           phaseResults.fuel.bypassingTime += cycleTime;
+          phaseResults.fuel.bypassCount += count;
         }
         break;
       }
@@ -203,10 +212,9 @@ export const calculateAverageMetrics = (reports) => {
   let disabledSum = 0;
   let accuracySum = 0;
   reports.forEach((r) => {
-    // MODIFIED: Added '&& r.totals.disabled !== 0' to ignore zero values
     if (r.totals && typeof r.totals.disabled === "number" && r.totals.disabled !== 0) {
       disabledSum += { No: 0, Yes: 1, Partially: 0.5 }[r.totals.disabled];
-      accuracySum += { Low: 40, Med: 70, High: 100, Perfect: 100 }[r.totals.accuracy]
+      accuracySum += { Low: 40, Med: 70, High: 100, Perfect: 100 }[r.totals.accuracy];
     }
   });
   averageMetrics.disabled = disabledSum / reports.length;
@@ -216,6 +224,8 @@ export const calculateAverageMetrics = (reports) => {
     // take keys from first report's totals if present
     const structure = {};
     const firstTotals = reports[0].totals && reports[0].totals[phase] ? reports[0].totals[phase] : {};
+    
+    // Automatically loops over the newly added 'shotCount', 'bypassCount', etc.
     for (const category of Object.keys(firstTotals)) {
       structure[category] = {};
       for (const key of Object.keys(firstTotals[category])) {
@@ -225,7 +235,6 @@ export const calculateAverageMetrics = (reports) => {
         reports.forEach((r) => {
           if (r.totals && r.totals[phase] && typeof r.totals[phase][category] !== "undefined") {
             const val = r.totals[phase][category][key];
-            // MODIFIED: Added '&& val !== 0' to ignore zero values
             if (typeof val === "number" && val !== 0) {
               sum += val;
               count++;

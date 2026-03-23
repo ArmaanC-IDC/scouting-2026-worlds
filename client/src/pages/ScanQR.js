@@ -1,4 +1,4 @@
-import { Box, Button, Paper, Typography } from "@mui/material";
+import { Box, Button, Paper, Typography, TextField } from "@mui/material";
 import { Html5Qrcode } from "html5-qrcode";
 import LZString from 'lz-string';
 import { useEffect, useRef, useState } from "react";
@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import { getScoutMatch, submitMatch } from "../requests/ApiRequests";
 import AppAlert from "./Common/AppAlert.js";
 
-// --- ADD THESE IMPORTS ---
 import { BinaryDTO } from "../storage/BinaryDTO";
 import { MATCH_SCHEMA } from "../storage/ScoutingSchema";
 
@@ -14,6 +13,11 @@ const ScanQR = () => {
     const navigate = useNavigate();
     const [result, setResult] = useState(null);
     const [parsedData, setParsedData] = useState(null);
+    
+    // New states for the editable JSON
+    const [editableJson, setEditableJson] = useState("");
+    const [jsonError, setJsonError] = useState("");
+
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertMessage, setAlertMessage] = useState("");
 
@@ -46,7 +50,7 @@ const ScanQR = () => {
             console.log("Binary String Scanned:", decodedText);
             setResult(decodedText);
             stopScanner();
-            tryUnpack(decodedText); // <--- Switch to the Unpacker
+            tryUnpack(decodedText);
         };
 
         const startScanner = async () => {
@@ -69,7 +73,7 @@ const ScanQR = () => {
     const tryUnpack = async (str) => {
         try {
             let workingStr = str;
-            // 1. Try LZ Decompression (though BinaryDTO usually handles its own base45)
+            // 1. Try LZ Decompression
             try {
                 const decompressed = LZString.decompressFromEncodedURIComponent(str);
                 if (decompressed) workingStr = decompressed;
@@ -78,12 +82,12 @@ const ScanQR = () => {
             const dto = new BinaryDTO(MATCH_SCHEMA);
             const data = dto.unpack(workingStr);
 
-            // 2. Reconstruct Time (ms since midnight -> full Unix timestamp)
+            // 2. Reconstruct Time
             const now = new Date();
             const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
             const fullMatchStart = startOfToday + data.matchStart;
 
-            // 3. Cycle Reconstruction (Inflate time & Inject rates)
+            // 3. Cycle Reconstruction
             const processedCycles = (data.cycles || []).map(cycle => {
                 let rateValue = 0;
                 if (cycle.type === "SHOOT") rateValue = data.shotRate || 0;
@@ -93,8 +97,8 @@ const ScanQR = () => {
                     ...cycle,
                     startTime: cycle.startTime * 100,
                     endTime: (cycle.startTime + cycle.duration) * 100,
-                    phase: (cycle.phase || "TELE").toLowerCase(), // Match DB 'auto'/'tele'
-                    rate: rateValue // Important for the cycles table
+                    phase: (cycle.phase || "TELE").toLowerCase(),
+                    rate: rateValue
                 };
             });
 
@@ -110,19 +114,46 @@ const ScanQR = () => {
                 scoutId: data.scoutId
             });
 
-            const { reportId, teamNumber, username } = res.data; // reportId and teamNumber
+            const { reportId, teamNumber, username } = res.data;
 
             // 6. Final Data Assembly
-            setParsedData({
+            const finalParsedData = {
                 ...data,
                 match_start_time: fullMatchStart,
                 reportId: reportId,
                 robot: teamNumber,
                 scoutName: username || `Scout #${data.scoutId}`,
                 cycles: processedCycles
-            });
+            };
 
-            showAlert(`Match ${data.matchKey} for Team ${teamNumber} loaded!`);
+            // 7. Generate Final Payload immediately so it can be edited
+            const reportPayload = {
+                eventKey: finalParsedData.eventKey, // Needed for API wrapper
+                matchKey: finalParsedData.matchKey, // Needed for API wrapper
+                reportId: finalParsedData.reportId,
+                matchStartTime: finalParsedData.match_start_time,
+                match_start_time: finalParsedData.match_start_time,
+                robot: String(finalParsedData.robot),
+                station: finalParsedData.station,
+                scoutId: finalParsedData.scoutId,
+                scoutName: finalParsedData.scoutName,
+                endgame: {
+                    disabled: finalParsedData.disabled || "No",
+                    driverSkill: String(finalParsedData.driverSkill || "0"),
+                    defenseSkill: String(finalParsedData.defenseSkill || "0"),
+                    accuracy: String(finalParsedData.accuracy || "NONE"),
+                    roles: (finalParsedData.roles || []).filter(r => r !== "NONE"),
+                    comments: finalParsedData.comments || ""
+                },
+                cycles: finalParsedData.cycles,
+            };
+
+            setParsedData(finalParsedData);
+            
+            // Format the JSON payload with 2 spaces for readability
+            setEditableJson(JSON.stringify(reportPayload, null, 2));
+
+            showAlert(`Match ${finalParsedData.matchKey} for Team ${teamNumber} loaded!`);
 
         } catch (e) {
             console.error("Critical Unpack Error:", e);
@@ -130,41 +161,37 @@ const ScanQR = () => {
         }
     };
 
+    // Validates JSON on the fly as the user types
+    const handleJsonChange = (e) => {
+        const newValue = e.target.value;
+        setEditableJson(newValue);
+        try {
+            JSON.parse(newValue);
+            setJsonError(""); // Valid JSON
+        } catch (err) {
+            setJsonError("Invalid JSON format");
+        }
+    };
+
     const handleSubmit = async () => {
-        if (!parsedData) return;
+        if (!editableJson) return;
+
+        let finalPayload;
+        try {
+            finalPayload = JSON.parse(editableJson);
+        } catch (err) {
+            showAlert("Cannot submit: Invalid JSON format.");
+            return;
+        }
+
         try {
             showAlert("Submitting to Server...");
 
-            // 7. THE TRANSLATION LAYER (CamelCase -> Snake_Case)
-            // This ensures the main report table columns are populated
-            const reportPayload = {
-                reportId: parsedData.reportId,
-                matchStartTime: parsedData.match_start_time, // Backend expects matchStartTime (camelCase)
-                match_start_time: parsedData.match_start_time, // For matchReportHelper
-                robot: String(parsedData.robot),
-                station: parsedData.station,
-                scoutId: parsedData.scoutId,
-                scoutName: parsedData.scoutName,
-
-                // THE MISSING PIECE: The Backend wants these inside an 'endgame' object
-                endgame: {
-                    disabled: parsedData.disabled || "No",
-                    driverSkill: String(parsedData.driverSkill || "0"),
-                    defenseSkill: String(parsedData.defenseSkill || "0"),
-                    accuracy: String(parsedData.accuracy || "NONE"),
-                    roles: (parsedData.roles || []).filter(r => r !== "NONE"),
-                    comments: parsedData.comments || ""
-                },
-
-                // Metadata for cycles
-                cycles: parsedData.cycles,
-            };
-
             const res = await submitMatch({
-                eventKey: parsedData.eventKey,
-                matchKey: parsedData.matchKey,
-                station: parsedData.station,
-                matchData: reportPayload // The perfectly formatted payload
+                eventKey: finalPayload.eventKey,
+                matchKey: finalPayload.matchKey,
+                station: finalPayload.station,
+                matchData: finalPayload 
             });
 
             if (res.status === 200) {
@@ -179,7 +206,7 @@ const ScanQR = () => {
 
     return (
         <Box sx={{ minHeight: "100vh", bgcolor: "#222", p: 2, display: "flex", justifyContent: "center", alignItems: "center" }}>
-            <Paper sx={{ p: 4, bgcolor: "#333", color: "#fff", width: "100%", maxWidth: "500px", textAlign: "center" }}>
+            <Paper sx={{ p: 4, bgcolor: "#333", color: "#fff", width: "100%", maxWidth: "800px", textAlign: "center" }}>
                 <Typography variant="h5" mb={3}>Lead Scout Scanner</Typography>
 
                 {!result ? (
@@ -188,16 +215,44 @@ const ScanQR = () => {
                     <Box>
                         {parsedData ? (
                             <Box sx={{ textAlign: "left", bgcolor: "#111", p: 2, borderRadius: 2, mb: 2 }}>
-                                <Typography><strong>Robot:</strong> {parsedData.robot} ({parsedData.station})</Typography>
-                                <Typography><strong>Match:</strong> {parsedData.matchKey}</Typography>
-                                <Typography><strong>Cycles:</strong> {parsedData.cycles?.length || 0}</Typography>
-                                <Typography><strong>Hang:</strong> {parsedData.endgame_hangLevel}</Typography>
+                                <Typography variant="subtitle1" mb={1} sx={{ color: "#aaa" }}>
+                                    Review and edit data before submission:
+                                </Typography>
+                                
+                                <TextField
+                                    multiline
+                                    fullWidth
+                                    minRows={10}
+                                    maxRows={20}
+                                    value={editableJson}
+                                    onChange={handleJsonChange}
+                                    error={!!jsonError}
+                                    helperText={jsonError || "Valid JSON payload"}
+                                    InputProps={{
+                                        style: {
+                                            fontFamily: 'monospace',
+                                            fontSize: '13px',
+                                            color: '#fff',
+                                            backgroundColor: '#222'
+                                        }
+                                    }}
+                                    FormHelperTextProps={{
+                                        style: { color: jsonError ? '#f44336' : '#4caf50' }
+                                    }}
+                                />
                             </Box>
                         ) : (
                             <Typography color="error">Invalid Data</Typography>
                         )}
 
-                        <Button variant="contained" color="success" fullWidth onClick={handleSubmit} sx={{ mb: 1 }}>
+                        <Button 
+                            variant="contained" 
+                            color="success" 
+                            fullWidth 
+                            onClick={handleSubmit} 
+                            disabled={!!jsonError} // Prevent submission if JSON is broken
+                            sx={{ mb: 1, py: 1.5, fontSize: "1.1rem", fontWeight: "bold" }}
+                        >
                             Upload to Database
                         </Button>
                         <Button variant="outlined" fullWidth onClick={() => window.location.reload()}>

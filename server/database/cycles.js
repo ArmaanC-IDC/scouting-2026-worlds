@@ -11,7 +11,7 @@ export const storeCyclesInternal = async (
   const tableName = `cycles_${eventKey}`;
   const client = await pgClient();
   try {
-    // Update the table schema to include new HANG cycle fields.
+    // Update the table schema to include new HANG cycle fields and the new count field.
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS ${tableName} (
         "key" TEXT PRIMARY KEY,
@@ -24,6 +24,7 @@ export const storeCyclesInternal = async (
         success BOOLEAN,
         end_time INT,
         rate INT,
+        count INT,           -- <-- 1. NEW FIELD IN SCHEMA
         robot TEXT,
         report_id TEXT,
         pin_count INT,
@@ -50,6 +51,9 @@ export const storeCyclesInternal = async (
 
       const pinCount = cycle.pinCount || null;
       const foulCount = cycle.foulCount || null;
+      
+      // <-- 2. EXTRACT NEW COUNT FIELD
+      const count = cycle.count !== undefined ? cycle.count : null; 
 
       const insertQuery = `
         INSERT INTO ${tableName} 
@@ -63,11 +67,12 @@ export const storeCyclesInternal = async (
           success,
           end_time,
           rate,
+          count,
           robot,
           report_id,
           pin_count,
           foul_count)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) -- <-- UPDATED TO $15
         ON CONFLICT (key) DO NOTHING;
       `;
       const values = [
@@ -81,6 +86,7 @@ export const storeCyclesInternal = async (
         cycle.success,
         cycle.endTime,
         cycle.rate,
+        count,
         additionalData.robot,
         additionalData.reportId,
         pinCount,
