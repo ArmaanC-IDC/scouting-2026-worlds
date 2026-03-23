@@ -66,7 +66,7 @@ export const StartingPositionSlider = React.memo(({match}) => {
   );
 }, (prevProps, nextProps) => {
   // ONLY re-render if startingPosition or teamNumber actually changes.
-  // This ignores the 500ms timer updates happening in the parent
+  // This ignores the 100ms timer updates happening in the parent
   return (
     prevProps.match.startingPosition === nextProps.match.startingPosition &&
     prevProps.match.scoutData?.teamNumber === nextProps.match.scoutData?.teamNumber &&

@@ -9,6 +9,7 @@ import {
 } from "react";
 import fullField from "../assets/scouting-2025/field/full_field.png"; // Make sure this path is correct
 import {
+  CYCLE_TYPES,
   FIELD_ASPECT_RATIO,
   FIELD_VIRTUAL_HEIGHT,
   FIELD_VIRTUAL_WIDTH,
@@ -20,16 +21,43 @@ const { SCORING_TABLE_FAR } = PERSPECTIVE;
 
 const isScoringTableFar = (perspective) => perspective === SCORING_TABLE_FAR;
 
-const getDefenseOffset = (isBlue, isDefending) => {
-  if (!isDefending) return 0;
-  // Returns the offset as a percentage (e.g., 0.38 for 38%)
-  return isBlue ? 0.38 : -0.38;
+// ===================================================================================
+// USER DEFINED MATCH OFFSETS
+// Implement your logic here to determine the offset based on the match state
+// ===================================================================================
+
+export const getMatchOffset = (match, isBlue) => {
+  if (!match) return 0;
+
+  let numAllianceCrossings = 0;
+  let numOppCrossings = 0;
+  match.cycles.forEach(c => {
+    //ignore starting position
+    if (Number(c.location)) return ;
+
+    if (c.type===CYCLE_TYPES.AUTO_MOVEMENT && c.location.startsWith("ALL")) {
+      numAllianceCrossings++;
+    } else if (c.type===CYCLE_TYPES.AUTO_MOVEMENT && c.location.startsWith("OPP")) {
+      numOppCrossings++;
+    }
+  });
+
+  numAllianceCrossings %= 2;
+  numOppCrossings %= 2;
+
+  //currently in alliance zone, no offset
+  if (numAllianceCrossings===0) return 0;
+
+  //currently in opponent alliance zone
+  if (numOppCrossings===1) return isBlue ? 0.38 : -0.38
+
+  return isBlue ? 0.2 : -0.2;
+};
+
+export const getMatchButtonOffset = (match, isBlue) =>{
+  return getMatchOffset(match, isBlue) * 1;
 }
 
-const getDefenseButtonOffset = (isBlue, isDefending, matchPhase) => {
-  if (!isDefending || matchPhase === PHASES.POST_MATCH) return 0;
-  return isBlue ? -0.14 : 0.14;
-}
 
 // ===================================================================================
 // HOW IT WORKS, PART 1: The Coordinate Scaling Functions
@@ -42,7 +70,7 @@ const imageScaleGlobal = 1;
 const imageOffsetXGlobal = (isBlue) => isBlue ? -0.382 : 0;
 
 const scaleCoordinates = (
-  fieldX, fieldY, width, height, actualWidth, actualHeight, perspective, isBlue, isDefending, flip
+  fieldX, fieldY, width, height, actualWidth, actualHeight, perspective, isBlue, match, flip
 ) => {
   if (!flip) {
     const topLeftX = fieldX - width / 2;
@@ -54,23 +82,15 @@ const scaleCoordinates = (
     return { scaledX, scaledY, scaledWidth, scaledHeight };
   }
 
-  // --- START OF THE FIX ---
-
   // Determine the final state of the coordinate system based on perspective and alliance.
   let flipX = false;
   let flipY = false;
 
-  // if (isScoringTableFar(perspective)) {
-  //   fieldX = SCREEN_FIELD_VIRTUAL_WIDTH - fieldX;
-  //   flipY = !flipY;
-  // }
   if (isBlue) {
     flipX = !flipX;
-    // flipY = !flipY;
   }
 
   // Apply the final flip state ONCE to the canonical coordinates.
-  // The complex defense offset logic has been removed from here.
   const finalX = flipX ? FIELD_VIRTUAL_WIDTH - fieldX : fieldX;
   const finalY = flipY ? FIELD_VIRTUAL_HEIGHT - fieldY : fieldY;
 
@@ -81,17 +101,14 @@ const scaleCoordinates = (
   const expectedWidth = actualHeight * FIELD_ASPECT_RATIO;
   const containerOffsetX = Math.max((actualWidth - expectedWidth) / 2, 0);
 
-  // Combine the static alliance offset with the dynamic defense offset.
-  // This now perfectly mirrors the logic used by the canvas `drawImage` call.
+  // Combine the static alliance offset with the dynamic match offset.
   const baseImageOffsetX = imageOffsetXGlobal(isBlue);
-  const dynamicDefenseOffset = getDefenseOffset(isBlue, isDefending);
-  const totalImageOffsetX = baseImageOffsetX + dynamicDefenseOffset;
+  const dynamicMatchOffset = getMatchOffset(match, isBlue);
+  const totalImageOffsetX = baseImageOffsetX + dynamicMatchOffset;
 
   // Use the combined total offset in the final scaling calculation.
   const scaledX = ((topLeftX / FIELD_VIRTUAL_WIDTH) * imageScaleGlobal + totalImageOffsetX) * expectedWidth + containerOffsetX;
   const scaledY = (topLeftY / FIELD_VIRTUAL_HEIGHT) * actualHeight;
-
-  // --- END OF THE FIX ---
 
   const scaledWidth = (width / FIELD_VIRTUAL_WIDTH) * expectedWidth * imageScaleGlobal;
   const scaledHeight = (height / FIELD_VIRTUAL_HEIGHT) * actualHeight;
@@ -100,41 +117,32 @@ const scaleCoordinates = (
 };
 
 const scaleToFieldCoordinates = (
-  x, y, actualWidth, actualHeight, perspective, isBlue, isDefending = false, phase
+  x, y, actualWidth, actualHeight, perspective, isBlue, match, phase
 ) => {
   const imageScale = imageScaleGlobal;
   const expectedWidth = actualHeight * FIELD_ASPECT_RATIO;
   const containerOffsetX = Math.max((actualWidth - expectedWidth) / 2, 0);
 
-  // --- START OF THE FIX ---
-  // We must account for the total offset when reversing the coordinates.
-
-  // 1. Calculate the total offset, just like in scaleCoordinates.
+  // 1. Calculate the total offset
   const baseImageOffsetX = imageOffsetXGlobal(isBlue);
-  const dynamicDefenseOffset = getDefenseOffset(isBlue, isDefending);
-  const totalImageOffsetX = baseImageOffsetX + dynamicDefenseOffset;
+  const dynamicMatchOffset = getMatchOffset(match, isBlue);
+  const totalImageOffsetX = baseImageOffsetX + dynamicMatchOffset;
 
   // 2. Remove the container offset and scale to get a percentage of the field image.
   const virtualXPercentWithOffset = (x - containerOffsetX) / expectedWidth;
+  
   // 3. Remove the total image offset to get the true canonical percentage.
   const virtualXPercent = (virtualXPercentWithOffset - totalImageOffsetX) / imageScale;
 
   let fieldX = Math.round(virtualXPercent * FIELD_VIRTUAL_WIDTH);
   let fieldY = Math.round((y / actualHeight) * FIELD_VIRTUAL_HEIGHT);
 
-  // --- END OF THE FIX ---
-
-  // The rest of this logic correctly un-applies the flips.
+  // Un-apply the flips
   let flipX = false;
   let flipY = false;
 
-  // if (isScoringTableFar(perspective)) {
-  //   fieldX = SCREEN_FIELD_VIRTUAL_WIDTH - fieldX;
-  //   flipY = !flipY;
-  // }
   if (isBlue) {
     flipX = !flipX;
-    // flipY = !flipY;
   }
 
   if (flipX) {
@@ -147,9 +155,11 @@ const scaleToFieldCoordinates = (
   return { fieldX, fieldY };
 };
 
-// FieldLocalComponent remains unchanged, as its logic is correctly abstracted.
+// ===================================================================================
+// FieldLocalComponent
+// ===================================================================================
 const FieldLocalComponent = ({
-  fieldX, fieldY, fieldWidth, fieldHeight, perspective, sx, children, isDefending = false, flip = true, phase
+  fieldX, fieldY, fieldWidth, fieldHeight, perspective, sx, children, match, flip = true, phase
 }) => {
   const localRef = useRef(null);
   const [parentSize, setParentSize] = useState({ width: 300, height: 300 });
@@ -169,10 +179,8 @@ const FieldLocalComponent = ({
 
   let { scaledX, scaledY, scaledWidth, scaledHeight } = scaleCoordinates(
     fieldX, fieldY, fieldWidth, fieldHeight,
-    parentSize.width, parentSize.height, perspective, isBlue, isDefending, flip
+    parentSize.width, parentSize.height, perspective, isBlue, match, flip
   );
-
-  scaledX += getDefenseButtonOffset(isBlue, isDefending, phase) * fieldWidth;
 
   return (
     <Box ref={localRef} sx={{ position: "absolute", left: scaledX, top: scaledY, width: scaledWidth, height: scaledHeight, ...sx }}>
@@ -202,6 +210,9 @@ const FieldCanvas = forwardRef(
 
     useLayoutEffect(() => { setCanvasSize({ width: height * FIELD_ASPECT_RATIO, height: height }); }, [height]);
 
+    // Calculate the total offset dynamically to feed into the useEffect dependency array
+    const dynamicOffset = getMatchOffset(match, isBlue);
+
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -209,9 +220,7 @@ const FieldCanvas = forwardRef(
       const image = new Image();
       image.src = fullField;
 
-      // This logic is the "ground truth" we are matching.
-      const defenseOffset = getDefenseOffset(isBlue, match?.isDefending());
-      const totalImageOffsetX = imageOffsetXGlobal(isBlue) + defenseOffset;
+      const totalImageOffsetX = imageOffsetXGlobal(isBlue) + dynamicOffset;
 
       image.onload = () => {
         ctx.save();
@@ -224,7 +233,7 @@ const FieldCanvas = forwardRef(
 
         ctx.drawImage(
           image,
-          canvas.width * totalImageOffsetX, // Use the combined offset
+          canvas.width * totalImageOffsetX, 
           0,
           canvas.width * imageScaleGlobal,
           canvas.height
@@ -239,7 +248,7 @@ const FieldCanvas = forwardRef(
           // Stroke logic would go here.
         }
       };
-    }, [canvasSize, perspective, strokes, isBlue, match?.isDefending()]);
+    }, [canvasSize, perspective, strokes, isBlue, dynamicOffset]);
 
     const handleMouseInteraction = (event, isClick = false) => {
       const canvas = canvasRef.current;
@@ -248,8 +257,7 @@ const FieldCanvas = forwardRef(
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      // Pass the defense state so coordinates can be calculated correctly.
-      const coords = scaleToFieldCoordinates(x, y, canvas.width, canvas.height, perspective, isBlue, match?.isDefending());
+      const coords = scaleToFieldCoordinates(x, y, canvas.width, canvas.height, perspective, isBlue, match);
 
       if (isClick && onClick != null) {
         onClick(coords.fieldX, coords.fieldY);

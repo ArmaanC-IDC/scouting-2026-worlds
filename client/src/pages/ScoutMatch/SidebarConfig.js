@@ -5,7 +5,8 @@ import {
   COLORS,
   CYCLE_TYPES,
   HANG_LEVELS,
-  PHASES
+  PHASES,
+  AUTO_MAX_TIME
 } from "./Constants";
 
 const exists = (val) => {
@@ -35,52 +36,58 @@ export const SIDEBAR_CONFIG = [
     isDisabled: (match) => match.startingPosition < 0,
   },
 
-  // ------------- HANG LEVEL --------------------------
-  {
-    phases: [PHASES.TELE], // Hanging is a TeleOp action
-    id: "hangLevelSelection",
-    // Use the HANG_LEVELS constants you just added
-    positions: Object.keys(HANG_LEVELS),
-    flexWeight: 1.5,
-    label: (match, key) => key.replace("_", " "), // "LEVEL_1" becomes "Level 1"
-
-    // When a level is clicked, we update the activeCycle with the selected level.
-    onClick: (match, key) => {
-      match.setActiveCycle(prev => ({ ...prev, location: key }), `Set hang level to ${key}`);
-    },
-    color: () => COLORS.PRIMARY, // Use a neutral color for a multi-step process
-
-    // This is the magic: Show only if the cycle is HANG and no level is set yet.
-    show: (match) =>
-      match.state.activeCycle?.type === CYCLE_TYPES.HANG && !match.state.activeCycle.location,
-  },
-
-  // --------------- HANG SUCCESS ------------------------
+  // ---------- PHASE CHANGER ---------------------------
   {
     phases: [PHASES.AUTO, PHASES.TELE],
-    id: "hangOutcomeSelection",
-    positions: ["SUCCESS", "FAIL"],
-    flexWeight: 2,
-    label: (match, key) => key,
-
-    // This is the final step. We finalize the cycle and save it.
-    onClick: (match, key, currentTime) => {
-      // Clear the activeCycle to return the sidebar to its normal state.
-      match.setActiveCycle({
-        ...match.activeCycle,
-        success: key === "SUCCESS",
-        endTime: currentTime,
-      }, `Set Hang To ${key}`);
+    positions: ["phaseChanger"],
+    show: (match) => true,
+    id: "phaseChanger",
+    label: (match) => match.phase === PHASES.AUTO ? "To TeleOp" : "To Endgame",
+    onClick: (match) => {
+      match.setPhase(
+        match.phase === PHASES.AUTO ? PHASES.TELE : PHASES.POST_MATCH,
+        match.phase === PHASES.AUTO ? "To TeleOp" : "To Endgame"
+      );
     },
+    sx: (match, currentTime) => {return {
+      //if teleop, make it a dull blue. If auto and not done, make dull red. If auto is done, make it bright green
+      backgroundColor: match.phase === PHASES.TELE ? 
+        "#8888dd" : 
+        (currentTime===AUTO_MAX_TIME 
+          ? ("#00ff00")
+          : "#aa0000"
+        ),
+      
+      //if teleop, make it white. If auto and not done, make it white. If auto is done, make it black
+      color: match.phase === PHASES.TELE ? 
+        "#ffffff" : 
+        (currentTime===AUTO_MAX_TIME 
+          ? ("#000000")
+          : "#ffffff"
+        ),
+    }}
+  },
 
-    // Use green for success and red for failure.
-    color: (match, key) => key === "SUCCESS" ? COLORS.SUCCESS : COLORS.FAIL,
-
-    // This is the magic: Show only if the cycle is HANG and a level IS set.
-    show: (match) =>
-      match.activeCycle?.type === CYCLE_TYPES.HANG &&
-      ((!!match.activeCycle.location && !exists(match.activeCycle.endTime)) ||
-        (match.phase === PHASES.AUTO && !exists(match.activeCycle.endTime)))
+  {
+    phases: [PHASES.TELE],
+    // Positioned same as PHASE_CHANGER
+    positions: ["DEFENSE"],
+    label: (match, key) => match.isDefending() ? "End Defend/Steal" : "Start Defense/Steal",
+    color: (match) => match.isDefending() ? COLORS.INTAKE : COLORS.HANG_DEFENSE,
+    show: (match) => true,
+    onClick: (match, key, currentTime) => {
+      if (match.isDefending()) {
+        match.setDefenseCycle(
+          prev => { return { ...prev.defenseCycle, endTime: currentTime } },
+          `End Defense/Steal`); // End defense
+      } else {
+        match.setDefenseCycle({
+          type: CYCLE_TYPES.DEFENSE,
+          phase: match.phase,
+          startTime: currentTime,
+        }, `Start Defense/Steal`);
+      }
+    },
   },
 
   // ---------- DEFENSE & CONTACT (Contextual) ----------
@@ -114,20 +121,6 @@ export const SIDEBAR_CONFIG = [
     },
     color: () => COLORS.ACTIVE,
     show: (match) => match.activeCycle?.type === CYCLE_TYPES.CONTACT && exists(match.activeCycle.startTime) && !exists(match.activeCycle.endTime),
-  },
-
-  // Generic CANCEL button for ANY active cycle (except Auto movement which is instant)
-  {
-    phases: [PHASES.AUTO, PHASES.TELE],
-    id: "cancelActiveCycle",
-    positions: ["Cancel"],
-    flexWeight: 0.5,
-    label: () => "Cancel",
-    onClick: (match) => {
-      match.setActiveCycle(() => ({}), `Cancel ${match.activeCycle.type} Cycle`);
-    },
-    color: () => COLORS.UNDO,
-    show: (match) => exists(match.activeCycle.startTime) && !exists(match.activeCycle.endTime),
   },
 
   {
@@ -224,3 +217,101 @@ export const SIDEBAR_CONFIG = [
     show: () => true
   }
 ];
+
+export const OVERLAY_CONFIG = [
+  //hang
+  {
+    phases: [PHASES.AUTO, PHASES.TELE],
+    showFunction: (match) => match.activeCycle.type===CYCLE_TYPES.HANG,
+    title: "HANG",
+    handleDone: (content, match, currentTime) => {
+      console.log("abcdefg")
+      match.setActiveCycle({
+        ...match.activeCycle,
+        location: content.level || HANG_LEVELS.LEVEL_1,
+        success: content.success
+      }, "Hang Cycle");
+    },
+    handleClose: (match) => {
+      console.log("abcdefghij");
+      match.setActiveCycle({
+        startTime: null,
+        phase: null,
+        type: null,
+        success: null,
+        location: null,
+      }, "Cancel Hang Cycle")
+    },
+    content: (match) => [
+      match.phase===PHASES.TELE && {
+        type: "buttonGroup",
+        id: "level",
+        label: "Level",
+        options: Object.keys(HANG_LEVELS).map((level, i) => ({
+          value: level,
+          label: `Level ${i+1}`
+        }))
+      },
+      {
+        type: "buttonGroup",
+        id: "success",
+        label: "Success",
+        options: [
+          {
+            label: "Success",
+            value: true,
+            isDefault: true,
+            sx: {
+              backgroundColor: "#00d68f",
+              color: "black"
+            }
+          }, 
+          {
+            label: "Fail",
+            value: false,
+            sx: {
+              backgroundColor: "#ff5757",
+              color: "black"
+            }
+          }
+        ]
+      }
+    ].filter(Boolean)
+  },
+
+  //feed
+  // FEED
+  {
+    phases: [PHASES.AUTO, PHASES.TELE],
+    // Defensive check just in case!
+    showFunction: (match) => !!match.activeCycle.type && match.activeCycle.type === CYCLE_TYPES.FEED,
+    title: "FEEDING (FERRY)",
+    handleDone: (content, match, currentTime) => {
+      // If they didn't click anything, it defaults to 0
+      const count = parseInt(content.feedCount) || 0;
+      
+      match.setActiveCycle({
+        ...match.activeCycle,
+        count: count,
+        endTime: currentTime 
+      }, `Feed Cycle (${count} balls)`);
+    },
+    handleClose: (match) => {
+      // Cancel completely
+      match.setActiveCycle({
+        startTime: null,
+        phase: null,
+        type: null,
+        count: null
+      });
+    },
+    content: (match) => [
+      {
+        type: "counter", 
+        id: "feedCount",
+        label: "Balls Fed",
+        defaultValue: 0
+      }
+    ]
+  }
+]

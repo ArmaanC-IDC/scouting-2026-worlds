@@ -12,7 +12,16 @@ import { BlueTheme } from "./themes/BlueTheme.js";
 import { RedTheme } from "./themes/RedTheme.js";
 import { useSearchParams } from "react-router-dom";
 
-import { Box, Button } from "@mui/material";
+import { 
+  Box, 
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
+  DialogActions,
+  Typography
+} from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { FieldCanvas, FieldLocalComponent } from "../FieldCanvas.js";
 import FullscreenDialog from "./FullScreenDialog.js";
@@ -33,7 +42,7 @@ import {
 import { SCOUTING_CONFIG, ENDGAME_CONFIG } from "./ScoutingConfig.js";
 import { getScoutMatch } from "../../requests/ApiRequests.js";
 import { ImageIcon } from "./CustomFieldComponents.js";
-import { SIDEBAR_CONFIG } from "./SidebarConfig.js";
+import { SIDEBAR_CONFIG, OVERLAY_CONFIG } from "./SidebarConfig.js";
 import { getSignedInUser } from "../../TokenUtils.js";
 import RequiredParamsDialog from "../Common/RequiredParamsDialog.js";
 import { useNavigate } from "react-router-dom";
@@ -158,7 +167,7 @@ const ScoutingConfigButton = ({ config, positionKey, match, scaleWidthToActual }
 };
 
 const SidebarButton = ({
-  match, id, flexWeight = 1, label, onClick, color, disabled = false, sx = {}, show = true, scaleWidthToActual
+  match, id, flexWeight = 1, label, onClick, color, disabled = false, sx = () => ({}), show = true, scaleWidthToActual
 }) => {
   const currentTime = useTimer();
   const [animating, setAnimating] = useState(false);
@@ -178,11 +187,177 @@ const SidebarButton = ({
         left: "5%",
         '@keyframes onClick': onClickKeyframes,
         animation: animating ? 'onClick 0.1s ease' : 'none',
-        ...sx,
+        ...sx && sx(match, currentTime),
       }}
     >{label && label(match, id) || label || ""}</Button>
   );
-}
+};
+
+const Overlay = ({match}) => {
+  const currentTime = useTimer();
+
+  const overlayItems = OVERLAY_CONFIG.filter((item) => item.phases.includes(match.phase));
+  const config = overlayItems.find(item => item.showFunction && item.showFunction(match, currentTime));
+
+  const [content, setContent] = useState({})
+  if (!config) return ;
+
+  const handleClose = () => {
+    config.handleClose && config.handleClose(match);
+  }
+  return (
+    <Dialog open={true} onClose={handleClose} fullWidth maxWidth="md">
+      <DialogTitle variant="h2" sx={{textAlign: "center"}}>{config.title || ""}</DialogTitle>
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column' }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            minHeight: "50vh",
+            justifyContent: "space-between",
+            flex: 1
+          }}
+        >
+          {config.content(match).map(contentConfig => {
+            if (!content[contentConfig.id]) {
+              setContent({
+                ...content,
+                [contentConfig.id]: [contentConfig.defaultValue || ""]
+              })
+            }
+
+            //single-select button group
+            if (contentConfig.type=="buttonGroup") {
+              return (<Box 
+                sx={{
+                  display: "flex", 
+                  justifyContent: "center", 
+                  flexDirection: "column", 
+                  flex: 1
+                }}>
+                <Typography variant="h4" sx={{textAlign: "center", width: "100%", paddingBottom: 2}}>
+                  {contentConfig.label}
+                </Typography>
+                <Box
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    // flex: 1,
+                    justifyContent: "center",
+                    alignItems: "center"
+                  }}
+                >
+                  {contentConfig.options.map(option => {
+                    if (option.isDefault && !exists(content[contentConfig.id])) setContent({
+                      ...content,
+                      [contentConfig.id]: option.value
+                    });
+                    return (
+                      <Button 
+                        variant="contained"
+                        onClick={(e) => setContent({
+                          ...content,
+                          [contentConfig.id]: option.value
+                        })}
+                        sx={{
+                          border: content[contentConfig.id]==option.value
+                            ? '5px solid black'
+                            : '1px solid black',
+                          flex: 1,
+                          height: "100%",
+                          ...option.sx
+                        }}
+                        fullWidth
+                      >{option.label}</Button>
+                    )
+                  })}
+                </Box>
+              </Box>)
+            }
+            else if (contentConfig.type=="textInput") {
+              return (
+                <TextField
+                  margin="dense"
+                  label={contentConfig.label}
+                  type={contentConfig.text}
+                  fullWidth
+                  value={content[contentConfig.id]}
+                  onChange={(e) => setContent({
+                    ...content,
+                    [contentConfig.id]: e.target.value || ""
+                  })}
+                >{contentConfig.children}</TextField>
+              )
+            }
+            else if (contentConfig.type === "counter") {
+              // Fallback to defaultValue or 0 if state hasn't registered yet
+              const currentVal = content[contentConfig.id] !== undefined 
+                ? Number(content[contentConfig.id]) 
+                : (contentConfig.defaultValue || 0);
+
+              const handleIncrement = (amount) => {
+                setContent({
+                  ...content,
+                  // Math.max prevents the scout from recording negative balls
+                  [contentConfig.id]: Math.max(0, currentVal + amount) 
+                });
+              };
+
+              return (
+                <Box 
+                  key={contentConfig.id} 
+                  sx={{ 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    flex: 1, 
+                    alignItems: "center", 
+                    justifyContent: "center", 
+                    gap: 4 
+                  }}
+                >
+                  <Typography variant="h2" sx={{ textAlign: "center", fontWeight: "bold" }}>
+                    {contentConfig.label}: {currentVal}
+                  </Typography>
+                  
+                  <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", justifyContent: "center", width: "100%" }}>
+                    {/* MINUS BUTTONS */}
+                    <Button variant="contained" color="error" sx={{ flex: 1, fontSize: "2rem" }} onClick={() => handleIncrement(-30)}>-30</Button>
+                    <Button variant="contained" color="error" sx={{ flex: 1, fontSize: "2rem" }} onClick={() => handleIncrement(-20)}>-20</Button>
+                    <Button variant="contained" color="error" sx={{ flex: 1, fontSize: "2rem" }} onClick={() => handleIncrement(-10)}>-10</Button>
+                    
+                    {/* PLUS BUTTONS */}
+                    <Button variant="contained" color="success" sx={{ flex: 1, fontSize: "2rem" }} onClick={() => handleIncrement(10)}>+10</Button>
+                    <Button variant="contained" color="success" sx={{ flex: 1, fontSize: "2rem" }} onClick={() => handleIncrement(20)}>+20</Button>
+                    <Button variant="contained" color="success" sx={{ flex: 1, fontSize: "2rem" }} onClick={() => handleIncrement(30)}>+30</Button>
+                  </Box>
+
+                </Box>
+              );
+            }
+            else return contentConfig.componentFunction(match, currentTime);
+          })}
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{display: "flex", justifyContent: "spaceBetween"}}>
+        <Button
+          onClick={() => {
+            handleClose();
+          }}
+          color="secondary"
+        >
+          Cancel
+        </Button>
+        <Button onClick={() => {
+          config.handleDone && config.handleDone(content, match, currentTime);
+          setContent({});
+        }}color="primary">
+          Done
+        </Button>
+      </DialogActions>
+    </Dialog>
+  )
+};
 
 //#endregion
 
@@ -259,9 +434,6 @@ const ScoutMatch = () => {
       setAlertMessage(message);
       setAlertOpen(true);
   };
-
-  const isUndoingRef = useRef(false);
-
   // ===================================================================================
   // #region useHistoryState Hook
   // ===================================================================================
@@ -323,13 +495,26 @@ const ScoutMatch = () => {
 
     // ========== UNDO ==========
     const undo = () => {
-      isUndoingRef.current = true;
       setHistoryState(prev => {
-        console.log("UNDO PREV INDEX:", prev.index);
         if (prev.index === 0) return prev;
-        const next = { ...prev, index: prev.index - 1 };
-        console.log("UNDO NEXT INDEX:", next.index);
-        return next;
+        const nextIndex = prev.index - 1;
+
+        // FIX: Wipe the transient 'activeCycle' state so we don't 
+        // restore a poisoned "button held down" state from the previous frame.
+        const newHistory = [...prev.history];
+        newHistory[nextIndex] = {
+          ...newHistory[nextIndex],
+          state: {
+            ...newHistory[nextIndex].state,
+            activeCycle: {} 
+          }
+        };
+
+        return {
+          ...prev,
+          index: nextIndex,
+          history: newHistory
+        };
       });
     }
 
@@ -397,12 +582,16 @@ const ScoutMatch = () => {
         currentSlice !== null &&
         !Array.isArray(currentSlice)
       ) {
-        newValue = { ...currentSlice, ...value };
+        // FIX: If passing an empty object, overwrite completely. Otherwise, merge.
+        if (Object.keys(value).length === 0) {
+          newValue = {};
+        } else {
+          newValue = { ...currentSlice, ...value };
+        }
       } else {
         newValue = value;
       }
 
-      // IMPORTANT: Return a NEW state object
       return {
         ...prev,
         [key]: newValue
@@ -528,20 +717,27 @@ const ScoutMatch = () => {
     lastUndoMessage,
     redoMessage,
     showAlert,
-    reset
+    reset,
   };
 
 
+  //#region save ended cycles
   useEffect(() => {
-    if (isUndoingRef.current) {
-      isUndoingRef.current = false;
-      return;
-    }
     switch (activeCycle.type) {
       case CYCLE_TYPES.SHOOTING:
       case CYCLE_TYPES.INTAKE:
       case CYCLE_TYPES.BYPASS:
         if (exists(activeCycle.endTime)) {
+          setState(prevState => ({
+            ...prevState,
+            cycles: [...prevState.cycles, activeCycle],
+            activeCycle: {}
+          }));
+        }
+        break;
+      case CYCLE_TYPES.FEED:
+        if (exists(activeCycle.count) || exists(activeCycle.endTime)) {
+          console.log("Ending cycle: ", activeCycle);
           setState(prevState => ({
             ...prevState,
             cycles: [...prevState.cycles, activeCycle],
@@ -559,7 +755,6 @@ const ScoutMatch = () => {
         }
         break;
       case CYCLE_TYPES.CONTACT:
-      case CYCLE_TYPES.HANG:
         if (exists(activeCycle.endTime)) {
           setState(prevState => ({
             ...prevState,
@@ -568,15 +763,20 @@ const ScoutMatch = () => {
           }));
         }
         break;
+      case CYCLE_TYPES.HANG:
+        if (exists(activeCycle.location)) {
+          setState(prevState => ({
+            ...prevState,
+            cycles: [...prevState.cycles, activeCycle],
+            activeCycle: {}
+          }))
+        }
     }
   }, [activeCycle]);
+  //#endregion
 
   useEffect(() => {
     if (exists(defenseCycle.endTime)) {
-      if (isUndoingRef.current) {
-        isUndoingRef.current = false;
-        return;
-      }
       setState(prevState => ({
         ...prevState,
         defenseCycle: {},
@@ -600,7 +800,7 @@ const ScoutMatch = () => {
             <FieldLocalComponent
               fieldX={fieldX} fieldY={fieldY} fieldWidth={fieldWidth} fieldHeight={fieldHeight}
               perspective={scoutPerspective}
-              isDefending={match.isDefending()}
+              match={match}
               sx={{ pointerEvents: noPointerEvents ? "none" : "auto", }}
               flip={!dontFlip}
               phase={match.phase}
@@ -626,6 +826,7 @@ const ScoutMatch = () => {
         perspective={scoutPerspective}
         flip={!config.dontFlip}
         phase={phase}
+        match={CONTEXT_WRAPPER}
       >
         {/* 3. Pass the context and config into the wrapper */}
         <MatchContext.Consumer>
@@ -911,7 +1112,11 @@ const ScoutMatch = () => {
   };
 
   const lockOrientation = async () => {
-    try { await window.screen.orientation.lock("landscape"); } catch (error) { console.error("Failed to lock orientation:", error); }
+    try { 
+      await window.screen.orientation.lock("landscape"); 
+    } catch (error) { 
+      console.error("Failed to lock orientation:", error); 
+    }
   };
 
   useLayoutEffect(() => {
@@ -949,6 +1154,7 @@ const ScoutMatch = () => {
                 background: getTheme().palette.background.default,
               }}
             >
+              <Overlay match={CONTEXT_WRAPPER}/>
               <Box
                 sx={{
                   // background: phase === PHASES.AUTO ? getTheme().palette.autoBackground.main : "",

@@ -12,6 +12,7 @@ export const TELE_MAX_TIME = 143 * 1000;
 export const CYCLE_TYPES = {
   SHOOTING: "SHOOT",
   BYPASS: "BYPASS",
+  FEED: "FEED",
   INTAKE: "INTAKE",
   DEFENSE: "DEFENSE",
   CONTACT: "CONTACT",

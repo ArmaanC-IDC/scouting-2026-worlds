@@ -1,3 +1,4 @@
+import { Typography } from "@mui/material";
 import {
   COLORS,
   CYCLE_TYPES,
@@ -45,38 +46,60 @@ export const SCOUTING_CONFIG = {
 
   MOVEMENT: {
     phases: [PHASES.AUTO, PHASES.TELE],
-    positions: { TRENCH: [1030, 210], BUMP: [1030, 500] },
+    positions: { 
+      ALL_TRENCH: [1030, 210], 
+      ALL_BUMP: [1030, 500], 
+      OPP_TRENCH: [2500, 210],
+      OPP_BUMP: [2500, 500]
+    },
     dimensions: { width: 250, height: 250 },
     onClick: (match, key, currentTime) => match.setCycles([...match.cycles, {
       location: key,
       type: CYCLE_TYPES.AUTO_MOVEMENT,
       phase: match.phase,
-      startTime: match.currentTime,
+      startTime: currentTime,
     }], `Move through ${key}`),
     textFunction: (match, key) => {
-      const spot = {
-        TRE: "TRENCH",
-        BUM: "BUMP"
-      }[key.substring(0, 3)];
-
-      return `${spot}: ${match.cycles.filter(c =>
+      return `${key.includes("TRENCH") ? "TRENCH" : "BUMP"}: ${match.cycles.filter(c =>
         c.type === CYCLE_TYPES.AUTO_MOVEMENT &&
-        c.location === spot
+        c.location === key
       ).length}`
     },
-    color: COLORS.UNDO
+    color: COLORS.UNDO,
+    showFunction: (match, key) => match.phase===PHASES.TELE || key.startsWith("ALL")
+  },
+
+  //feed
+  FEED: {
+    phases: [PHASES.AUTO, PHASES.TELE],
+    positions: {[GAME_LOCATIONS.ALLIANCE_ZONE]: [1030, 1200]},
+    dimensions: { width: 250, height: 600 },
+    onClick: (match, key, currentTime) => match.setActiveCycle({
+      type: CYCLE_TYPES.FEED,
+      startTime: currentTime,
+      phase: match.phase,
+      location: key,
+    }),
+    textFunction: () => "Feed",
+    color: COLORS.FEED,
+    showFunction: () => true,
+    isSelected: (match, key) => match.activeCycle.type===CYCLE_TYPES.FEED && match.activeCycle.location===key
   },
 
   HUB: {
     phases: [PHASES.AUTO, PHASES.TELE],
-    positions: { SHOOT: [855, 800]},
-    dimensions: { width: 600, height: 300 },
-    textFunction: (match, key) => key,
+    positions: { SHOOT: [450, 800]},
+    dimensions: { width: 700, height: 1300 },
+    textFunction: (match, key) => (
+      <Typography sx={{marginRight: match.isScoutingRed ? "-40%" : "40%"}}>
+        {key}
+      </Typography>
+    ),
     color: COLORS.SHOOT,
-    fontSize: 90,
+    fontSize: 10,
     sx: (match) => {
       return {
-        fontWeight: 400,
+        fontWeight: 500,
       }
     },
     showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1,
@@ -92,7 +115,15 @@ export const SCOUTING_CONFIG = {
       match.setActiveCycle({
         ...match.activeCycle,
         endTime: currentTime,
-      })
+      }, "Shooting Cycle")
+    },
+    onClickCancel: (match, key, currentTime) => {
+      match.setActiveCycle({
+        type: null,
+        phase: null,
+        startTime: null,
+        endTime: null
+      });
     },
     isSelected: (match, key) =>
       match.activeCycle?.type === CYCLE_TYPES.SHOOTING && exists(match.activeCycle?.startTime),
@@ -100,8 +131,8 @@ export const SCOUTING_CONFIG = {
 
   TOWER: {
     phases: [PHASES.AUTO, PHASES.TELE],
-    positions: { TOWER: [300, 800] },
-    dimensions: { width: 500, height: 300 },
+    positions: { TOWER: [225, 800] },
+    dimensions: { width: 350, height: 300 },
     showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 1,
     textFunction: (match, key) => "HANG",
     color: COLORS.HANG_DEFENSE,
@@ -110,10 +141,16 @@ export const SCOUTING_CONFIG = {
         type: CYCLE_TYPES.HANG,
         phase: match.phase,
         startTime: currentTime,
-      }, `Start Climb Cycle`);
+      });
     },
     isSelected: (match, key) =>
       match.activeCycle?.type === CYCLE_TYPES.HANG,
+    fontSize: 90,
+    sx: (match) => {
+      return {
+        fontWeight: 400,
+      }
+    }
   },
 
   HISTORY_CONTROLS: {
@@ -145,67 +182,6 @@ export const SCOUTING_CONFIG = {
     showFunction: (match, key) => {
       return key === "UNDO" ? match.canUndo() : match.canRedo();
       // return false;
-    },
-  },
-
-  PHASE_CHANGER: {
-    // CRITICAL: This button will ONLY ever exist during the AUTO phase.
-    phases: [PHASES.AUTO, PHASES.TELE],
-
-    positions: {
-      TO_TELE: [1650, 200],
-    },
-    dimensions: { width: 950, height: 200 },
-
-    // The text is static, so no logic is needed.
-    textFunction: (match, key) => match.phase === PHASES.AUTO ? "To TeleOp" : "To Endgame",
-
-    // The onClick is now extremely simple.
-    onClick: (match) => {
-      match.setPhase(
-        match.phase === PHASES.AUTO ? PHASES.TELE : PHASES.POST_MATCH,
-        match.phase === PHASES.AUTO ? "To TeleOp" : "To Endgame"
-      );
-    },
-    sx: (match, currentTime) => {return {
-      //if teleop, make it a dull blue. If auto and not done, make dull red. If auto is done, make it bright green
-      backgroundColor: match.phase === PHASES.TELE ? 
-        "#8888dd" : 
-        (currentTime===AUTO_MAX_TIME 
-          ? ("#00ff00")
-          : "#aa0000"
-        ),
-      
-      //if teleop, make it white. If auto and not done, make it white. If auto is done, make it black
-      color: match.phase === PHASES.TELE ? 
-        "#ffffff" : 
-        (currentTime===AUTO_MAX_TIME 
-          ? ("#000000")
-          : "#ffffff"
-        ),
-    }}
-  },
-
-  DEFENSE_TOGGLE: {
-    phases: [PHASES.TELE],
-    // Positioned same as PHASE_CHANGER
-    positions: { DEFENSE: [1650, 475] },
-    dimensions: { width: 950, height: 250 },
-    textFunction: (match, key) => match.isDefending() ? "End Defend/Steal" : "Start Defense/Steal",
-    color: COLORS.HANG_DEFENSE,
-    showFunction: (match, key) => match.cycles.filter(c => c.type === CYCLE_TYPES.AUTO_MOVEMENT).length % 2 === 0,
-    onClick: (match, key, currentTime) => {
-      if (match.isDefending()) {
-        match.setDefenseCycle(
-          prev => { return { ...prev.defenseCycle, endTime: currentTime } },
-          `End Defense/Steal`); // End defense
-      } else {
-        match.setDefenseCycle({
-          type: CYCLE_TYPES.DEFENSE,
-          phase: match.phase,
-          startTime: currentTime,
-        }, `Start Defense/Steal`);
-      }
     },
   },
 
