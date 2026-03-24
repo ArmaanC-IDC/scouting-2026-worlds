@@ -32,7 +32,7 @@ import RequiredParamsDialog from "../Common/RequiredParamsDialog";
 import { getReports } from "../../requests/ApiRequests";
 import HomeIcon from "@mui/icons-material/Home";
 
-import { accentColor, importantMetrics, calculatedMetrics } from "./Config";
+import { accentColor, importantMetrics, calculatedMetrics, GROUP_COLORS } from "./Config";
 
 // ----------------- Helper Functions -----------------
 const formatValue = (value, key) => {
@@ -61,13 +61,19 @@ const getRawValue = (item, key) => {
 
 
 const descendingComparator = (a, b, orderBy) => {
-  // Use getRawValue which now safely handles potentially missing keys
-  const aVal = getRawValue(a, orderBy);
-  const bVal = getRawValue(b, orderBy);
+  // 1. Standard sorting for strings (Robot number, Phase)
+  if (orderBy === "robot" || orderBy === "phase") {
+    const aVal = a[orderBy] || "";
+    const bVal = b[orderBy] || "";
+    if (bVal < aVal) return -1;
+    if (bVal > aVal) return 1;
+    return 0;
+  }
 
-  // Treat null or non-numeric values as lower than numbers
-  if (bVal === null || typeof bVal !== 'number') return -1;
-  if (aVal === null || typeof aVal !== 'number') return 1;
+  // 2. Numerical sorting for metrics (using our hidden _sortValues object)
+  // We use -Infinity so that null/empty values always sink to the bottom of the table
+  const aVal = a._sortValues && a._sortValues[orderBy] !== undefined ? a._sortValues[orderBy] : -Infinity;
+  const bVal = b._sortValues && b._sortValues[orderBy] !== undefined ? b._sortValues[orderBy] : -Infinity;
 
   if (bVal < aVal) return -1;
   if (bVal > aVal) return 1;
@@ -101,30 +107,25 @@ const CategoryTable = ({ data, group, rows, metricKeys, headingColor }) => {
   console.log("averages", data, group, rows, metricKeys, headingColor);
 
   const processedRows = useMemo(() => {
-    // Create a new array of rows that includes the calculated values as properties.
     return rows.map(row => {
-      const newRow = { ...row };
+      // Create a hidden _sortValues object on the row
+      const newRow = { ...row, _sortValues: {} };
 
       metricKeys.forEach(key => {
         let rawValue;
         if (calculatedMetrics[group]?.[key]) {
-          // This metric is calculated on the fly.
           const calculatedResult = calculatedMetrics[group][key](data[row.robot], row.phase);
-          // Convert the result (which might be a string like "-") to a number for sorting.
-          // parseFloat will correctly handle numbers-as-strings ("25.1") and return NaN for "-".
           rawValue = parseFloat(calculatedResult);
         } else {
-          // This metric exists on the row object; just get its raw value.
           rawValue = getRawValue(row, key);
         }
 
-        // Add the purely numerical value to our new row object.
-        // If rawValue is NaN or null, default to a low number like -1 so sorting remains stable.
-        newRow[key] = (typeof rawValue === 'number' && !isNaN(rawValue)) ? rawValue : -1;
+        // Store the number STRICTLY for sorting purposes. Do not overwrite the display data!
+        newRow._sortValues[key] = (typeof rawValue === 'number' && !isNaN(rawValue)) ? rawValue : -Infinity;
       });
       return newRow;
     });
-  }, [rows, group, metricKeys]); // This memoization is key for performance
+  }, [rows, group, metricKeys, data]); // Ensure data is in the dependency array
 
   const handleRequestSort = (event, property) => {
     const isAsc = orderBy === property && order === "asc";
@@ -206,9 +207,18 @@ const AveragesTable = ({ averages, phaseFilter, headingColors }) => {
     const newCategoryRows = {};
     Object.keys(averages).forEach((robotId) => {
       const robotAverages = averages[robotId] || {};
-      Object.keys(robotAverages).forEach((phase) => {
-        if (phaseFilter !== "all" && phase.toLowerCase() !== phaseFilter) return;
-        const phaseData = robotAverages[phase] || {};
+      
+      // Explicitly define the valid phases to loop over, avoiding root-level metadata
+      const validPhases = ["auto", "tele"];
+      
+      validPhases.forEach((phase) => {
+        // Obey the phaseFilter
+        if (phaseFilter !== "all" && phase !== phaseFilter) return;
+        
+        const phaseData = robotAverages[phase];
+        if (!phaseData) return;
+
+        // Now phaseData is guaranteed to be an object like { fuel: {...}, movement: {...} }
         Object.keys(phaseData).forEach((group) => {
           if (!newCategoryRows[group]) newCategoryRows[group] = [];
           newCategoryRows[group].push({
@@ -261,7 +271,7 @@ const AveragesTable = ({ averages, phaseFilter, headingColors }) => {
               }}
               onClick={() => toggleGroup(group)}
             >
-              <Typography variant="h3" sx={{ flexGrow: 1 }}>
+              <Typography variant="h3" sx={{ flexGrow: 1, color: headingColors[group] }}>
                 {camelCaseToWords(group)}
               </Typography>
               {openGroups[group] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -278,13 +288,7 @@ const AveragesTable = ({ averages, phaseFilter, headingColors }) => {
 
 
 // ----------------- CategorySort -----------------
-const CategorySort = ({ requiredParamKeys = ["eventKey"], headingColors = {
-  fuel: "#fcec4e",
-  hang: "#e06bfa",
-  defense: "#FCA311",
-  contact: "#00B4D8",
-  movement: "#FCA311"
-} }) => {
+const CategorySort = ({ requiredParamKeys = ["eventKey"], headingColors = GROUP_COLORS }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();

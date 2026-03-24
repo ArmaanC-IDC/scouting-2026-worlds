@@ -192,17 +192,17 @@ export const SIDEBAR_CONFIG = [
 ];
 
 export const OVERLAY_CONFIG = [
-  //hang
+  //HANG
   {
     phases: [PHASES.AUTO, PHASES.TELE],
     showFunction: (match) => match.activeCycle.type===CYCLE_TYPES.HANG,
     title: "HANG",
     handleDone: (content, match, currentTime) => {
-      console.log("abcdefg")
       match.setActiveCycle({
         ...match.activeCycle,
         location: content.level || HANG_LEVELS.LEVEL_1,
-        success: content.success
+        success: content.success,
+        endTime: currentTime
       }, "Hang Cycle");
     },
     handleClose: (match) => {
@@ -252,7 +252,6 @@ export const OVERLAY_CONFIG = [
     ].filter(Boolean)
   },
 
-  //feed
   // FEED
   {
     phases: [PHASES.AUTO, PHASES.TELE],
@@ -300,8 +299,8 @@ export const OVERLAY_CONFIG = [
           ...match.activeCycle,
           endTime: currentTime,
           cycle_time: currentTime - match.activeCycle.startTime,
-          pin_count: Number(content.pinCount) || 0,
-          foul_count: Number(content.foulCount) || 0
+          pinCount: Number(content.pinCount) || 0,
+          foulCount: Number(content.foulCount) || 0
         }], "End Contact & Defense");
         
         match.setActiveCycle(() => ({})); 
@@ -361,8 +360,8 @@ export const OVERLAY_CONFIG = [
                           ...match.activeCycle,
                           endTime: currentTime,
                           cycle_time: currentTime - match.activeCycle.startTime,
-                          pin_count: pins,
-                          foul_count: fouls
+                          pinCount: pins,
+                          foulCount: fouls
                         }], "Contact Cycle");
                         
                         match.setActiveCycle(() => ({}));

@@ -1,11 +1,5 @@
 // calculateReportTotals.js
 
-// Helper: safe check for "success" (prefer explicit success boolean, fall back to end_time presence)
-const cycleSucceeded = (cycle) => {
-  if (typeof cycle.success === "boolean") return cycle.success;
-  return cycle.end_time !== null && cycle.end_time !== undefined;
-};
-
 // Helper: parse attained_location which might be JSON, a string, or an object
 const parseAttainedLocation = (attained) => {
   if (!attained && attained !== 0) return null;
@@ -25,16 +19,9 @@ export const calculateReportTotals = (report) => {
   // Default per-phase structure
   const DEFAULT_PHASE_STRUCTURE = {
     fuel: {
-      shotRateSum: 0,
-      shotCount: 0,         // <-- NEW: Added exact count for shots
-      numShotCycles: 0,
-      bypassRateSum: 0,
-      bypassCount: 0,       // <-- NEW: Added exact count for feeds/bypasses
-      numBypassCycles: 0,
-      intakeCount: 0,       // <-- NEW: Added exact count for intake/steals
       shootingTime: 0,
-      bypassingTime: 0,
-      intakingTime: 0,
+      feedingTime: 0,
+      feedCount: 0,
     },
     movement: {
       bumps: 0,
@@ -46,7 +33,6 @@ export const calculateReportTotals = (report) => {
   // Initialize results
   const results = {
     disabled: 0,
-    accuracy: "Low",
     // keep same post-match fields (if present on report object)
     driverSkill: report.driverSkill ?? "N/A",
     defenseSkill: report.defenseSkill ?? "N/A",
@@ -65,7 +51,6 @@ export const calculateReportTotals = (report) => {
         lOneRate: 0,
         lTwoRate: 0,
         lThreeRate: 0,
-        avgHangPoints: 0,
         cycleTime: null,
       },
       defense: {
@@ -81,7 +66,6 @@ export const calculateReportTotals = (report) => {
 
   // Keep disabled value
   results.disabled += Number(report.disabled ?? 0);
-  results.accuracy = report.accuracy || "Low";
 
   // Guard: if no cycles, return early (but still return base structure)
   if (!Array.isArray(report.cycles) || report.cycles.length === 0) {
@@ -98,20 +82,21 @@ export const calculateReportTotals = (report) => {
     const startTime = cycle.start_time !== undefined ? cycle.start_time : null;
     const endTime = cycle.end_time !== undefined ? cycle.end_time : null;
     const location = cycle.location !== undefined ? cycle.location : null;
-    const cycleTime = endTime - startTime; // <-- Fixed double semicolon
+    const cycleTime = endTime - startTime; 
     const attainedLocationRaw = cycle.attained_location !== undefined ? cycle.attained_location : null;
     const attainedLocation = parseAttainedLocation(attainedLocationRaw);
 
-    // <-- NEW: Extract the raw count from the frontend
+    // Extract the raw count from the frontend
     let count = cycle.count !== undefined && cycle.count !== null ? Number(cycle.count) : 0;
 
     switch (cycleType) {
       case "AUTO_MOVEMENT": {
         const normalizedLocation = String(location).trim().toUpperCase();
 
-        if (normalizedLocation == "\"BUMP\"") {
+        // Use .includes to catch ALL_BUMP, OPP_BUMP, ALL_TRENCH, etc.
+        if (normalizedLocation.includes("BUMP")) {
           phaseResults.movement.bumps += 1;
-        } else if (normalizedLocation == "\"TRENCH\"") {
+        } else if (normalizedLocation.includes("TRENCH")) {
           phaseResults.movement.trenches += 1;
         } else {
           phaseResults.movement.movements += 1;
@@ -120,35 +105,24 @@ export const calculateReportTotals = (report) => {
       }
 
       case "SHOOT":
-      case "SHOOTING": // Adding frontend exact matches just in case
+      case "SHOOTING": 
       case "BYPASS":
-      case "FEED":
-      case "INTAKE": {
+      case "FEED": {
         const rate = cycle.rate || 0;
 
-        // NEW: Fallback -> If count isn't provided but rate (items/sec) and duration exist, estimate total items
+        // Fallback -> If count isn't provided but rate (items/sec) and duration exist, estimate total items
         if (count === 0 && rate > 0 && cycleTime > 0) {
           count = Math.round(rate * (cycleTime / 1000));
         }
 
-        // Intake -> Attained
-        if (cycleType === "INTAKE") {
-          phaseResults.fuel.intakingTime += cycleTime;
-          phaseResults.fuel.intakeCount += count;
-        }
         // Shoot -> Shot (Score)
-        else if (cycleType === "SHOOT" || cycleType === "SHOOTING") {
-          phaseResults.fuel.numShotCycles += 1;
-          phaseResults.fuel.shotRateSum += rate;
+        if (cycleType === "SHOOT" || cycleType === "SHOOTING") {
           phaseResults.fuel.shootingTime += cycleTime;
-          phaseResults.fuel.shotCount += count;
         }
         // Bypass -> Feed
         else if (cycleType === "BYPASS" || cycleType === "FEED") {
-          phaseResults.fuel.numBypassCycles += 1;
-          phaseResults.fuel.bypassRateSum += rate;
-          phaseResults.fuel.bypassingTime += cycleTime;
-          phaseResults.fuel.bypassCount += count;
+          phaseResults.fuel.feedingTime += cycleTime;
+          phaseResults.fuel.feedCount += count;
         }
         break;
       }
@@ -156,6 +130,7 @@ export const calculateReportTotals = (report) => {
       case "HANG": {
         phaseResults.hang.attempts += 1;
         if (cycleTime !== null) {
+          console.log("cycleTime", cycleTime, cycle);
           phaseResults.hang.cycleTime = cycleTime;
         }
 
@@ -175,16 +150,27 @@ export const calculateReportTotals = (report) => {
       }
 
       case "DEFENSE": {
-        if (cycle.cycle_time !== null && cycle.cycle_time !== undefined) {
-          phaseResults.defense.totalTime += Number(cycle.cycle_time);
+        // Fallback to locally calculated cycleTime if DB field is missing
+        const duration = cycle.cycle_time !== undefined && cycle.cycle_time !== null 
+          ? Number(cycle.cycle_time) 
+          : cycleTime;
+
+        if (duration > 0) {
+          phaseResults.defense.totalTime += duration;
         }
         break;
       }
 
       case "CONTACT": {
-        if (cycle.cycle_time !== null && cycle.cycle_time !== undefined) {
-          phaseResults.contact.totalTime += Number(cycle.cycle_time);
+        // Fallback to locally calculated cycleTime if DB field is missing
+        const duration = cycle.cycle_time !== undefined && cycle.cycle_time !== null 
+          ? Number(cycle.cycle_time) 
+          : cycleTime;
+
+        if (duration > 0) {
+          phaseResults.contact.totalTime += duration;
         }
+        
         phaseResults.contact.pinCount += cycle.pin_count !== null && cycle.pin_count !== undefined ? Number(cycle.pin_count) : 0;
         phaseResults.contact.foulCount += cycle.foul_count !== null && cycle.foul_count !== undefined ? Number(cycle.foul_count) : 0;
         break;
@@ -198,7 +184,7 @@ export const calculateReportTotals = (report) => {
   return results;
 };
 
-// ---------- Average metrics helper (keeps similar shape to your original but generic) ----------
+// ---------- Average metrics helper ----------
 export const calculateAverageMetrics = (reports) => {
   if (!Array.isArray(reports) || reports.length === 0) return {};
 
@@ -210,11 +196,9 @@ export const calculateAverageMetrics = (reports) => {
 
   // disabled: average over numeric values, excluding zeros
   let disabledSum = 0;
-  let accuracySum = 0;
   reports.forEach((r) => {
     if (r.totals && typeof r.totals.disabled === "number" && r.totals.disabled !== 0) {
       disabledSum += { No: 0, Yes: 1, Partially: 0.5 }[r.totals.disabled];
-      accuracySum += { Low: 40, Med: 70, High: 100, Perfect: 100 }[r.totals.accuracy];
     }
   });
   averageMetrics.disabled = disabledSum / reports.length;
@@ -225,7 +209,6 @@ export const calculateAverageMetrics = (reports) => {
     const structure = {};
     const firstTotals = reports[0].totals && reports[0].totals[phase] ? reports[0].totals[phase] : {};
     
-    // Automatically loops over the newly added 'shotCount', 'bypassCount', etc.
     for (const category of Object.keys(firstTotals)) {
       structure[category] = {};
       for (const key of Object.keys(firstTotals[category])) {
@@ -250,9 +233,6 @@ export const calculateAverageMetrics = (reports) => {
 
   averageMetrics.auto = accumulatePhase("auto");
   averageMetrics.tele = accumulatePhase("tele");
-
-  averageMetrics.tele.fuel.accuracy = accuracySum / reports.length;
-  averageMetrics.auto.fuel.accuracy = accuracySum / reports.length;
 
   return averageMetrics;
 };

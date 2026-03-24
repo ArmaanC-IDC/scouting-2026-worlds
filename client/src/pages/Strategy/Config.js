@@ -18,13 +18,22 @@ export const GROUP_COLORS = {
 //metrics that are specially calculated
 export const calculatedMetrics = {
     fuel: {
-        // 1. Create new "private" calculation functions
         shotCount: (averages, phase) => {
-            const fuelMetrics = averages[phase].fuel;
+            // 1. Convert phase back to lowercase to match the data object
+            const normalizedPhase = phase.toLowerCase();
+            
+            // 2. Safely access the phase, returning early if it doesn't exist
+            const phaseData = averages[normalizedPhase];
+            if (!phaseData || !phaseData.fuel) return "-";
 
-            const result = (getValue(fuelMetrics.shootingTime) / 1000) * averages.avgShotRate;
-            console.log("resabcd", result);
-            return Number.isFinite(result) ? result.toFixed(0) : "-"; // Return 0 on failure
+            const fuelMetrics = phaseData.fuel;
+
+            // 3. Safely calculate
+            const timeVal = getValue(fuelMetrics.shootingTime);
+            if (timeVal === null || !averages.avgShotRate) return "-";
+
+            const result = (timeVal / 1000) * averages.avgShotRate;
+            return Number.isFinite(result) ? result.toFixed(0) : "-";
         },
     }
 };

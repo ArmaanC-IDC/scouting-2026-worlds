@@ -19,24 +19,22 @@ import { useNavigate } from "react-router-dom";
 import HomeIcon from '@mui/icons-material/Home';
 
 // Constant configuration for all supported parameters.
-// These values are fixed and cannot be changed externally.
 export const SUPPORTED_PARAMS = {
   eventKey: {
     label: "Event Key",
     type: "select",
-    // Options for event keys; these are fixed.
     options: [...ATTENDING_EVENTS, ...PRACTICE_EVENTS],
   },
   matchKey: {
     label: "Match Key",
     type: "select-text",
-    options: ["qm"]
+    // Added "other" (and standard FRC playoff prefixes if you want them!)
+    options: ["qm", "pm", "qf", "sf", "f", "other"] 
   },
   robot: {
     label: "Robot",
     type: "text",
-    helperText:
-      "Please confirm the robot number is exactly right"
+    helperText: "Please confirm the robot number is exactly right"
   },
   station: {
     label: "Station",
@@ -47,27 +45,22 @@ export const SUPPORTED_PARAMS = {
     label: "Scout Name",
     type: "text"
   }
-  // You can add more fixed parameters here in the future.
 };
 
 const RequiredParamsDialog = ({
   open,
   onSubmit,
-  searchParams, // e.g. a URLSearchParams instance
+  searchParams,
   searchParamsError,
   scoutData,
-  // Array of parameter keys that are required in this dialog.
-  // e.g. ["eventKey", "matchKey", "robot"]
   offlineOption = false,
   offlineRequiredParamKeys = [],
   requiredParamKeys = ["eventKey"],
 }) => {
-  // Build a configuration array from the keys.
   const requiredParams = requiredParamKeys
     .map((key) => SUPPORTED_PARAMS[key])
-    .filter(Boolean); // Filter out any keys that are not defined
+    .filter(Boolean); 
 
-  // Build initial state from searchParams for only the required params.
   const getInitialValues = () => {
     const initial = {};
     Object.keys(SUPPORTED_PARAMS).forEach(key => {
@@ -84,7 +77,6 @@ const RequiredParamsDialog = ({
   const [values, setValues] = useState(getInitialValues());
   const [networkMode, setNetworkMode] = useState(true);
 
-  // Update local state when searchParams change.
   useEffect(() => {
     setValues(getInitialValues());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,7 +90,6 @@ const RequiredParamsDialog = ({
   };
 
   const handleSubmit = () => {
-    // Check that all required fields have a value.
     const allPresent = requiredParamKeys.every(
       (key) => values[key] && values[key].trim() !== ""
     );
@@ -131,6 +122,7 @@ const RequiredParamsDialog = ({
         {(networkMode ? requiredParamKeys : offlineRequiredParamKeys).map((key) => {
           const param = SUPPORTED_PARAMS[key];
           if (!param) return null;
+
           if (param.type === "select") {
             return (
               <FormControl fullWidth margin="normal" key={key}>
@@ -151,30 +143,44 @@ const RequiredParamsDialog = ({
               </FormControl>
             );
           }
+          
           if (param.type === "select-text") {
-            // 1. Parse the combined value (e.g., "qm8") into its parts.
-            // We use useMemo to avoid recalculating on every render.
+            // 1. Better Parsing Logic (No Regex)
             const { prefix, number } = (() => {
               const value = values[key] || "";
-              const match = value.match(/^([a-zA-Z]*)(\d*)$/);
-              if (match) {
-                // match[1] is the letters part, match[2] is the number part
-                return { prefix: match[1] || param.options[0], number: match[2] || "" };
-              }
-              return { prefix: param.options[0], number: "" };
-            })()
+              if (value === "") return { prefix: "", number: "" };
 
-            // 2. Create a handler for when the dropdown (prefix) changes.
+              // See if the string starts with any known prefix (excluding "other")
+              const matchedPrefix = param.options.find(
+                opt => opt !== "other" && value.startsWith(opt)
+              );
+
+              if (matchedPrefix) {
+                return { prefix: matchedPrefix, number: value.slice(matchedPrefix.length) };
+              }
+
+              // If no standard prefix matches, it's a custom "other" value
+              return { prefix: "", number: value };
+            })();
+
+            // 2. Handle dropdown changes
             const handlePrefixChange = (e) => {
               const newPrefix = e.target.value;
-              // Combine the new prefix with the existing number.
-              handleChange(key, `${newPrefix}${number}`);
+              if (newPrefix === "other") {
+                handleChange(key, number); // Drop the prefix, keep whatever number they had
+              } else {
+                handleChange(key, `${newPrefix}${number}`);
+              }
             };
 
-            // 3. Create a handler for when the text field (number) changes.
+            // 3. Handle text input changes
             const handleNumberChange = (e) => {
-              const newNumber = e.target.value;
-              handleChange(key, `${prefix}${newNumber}`);
+              const newText = e.target.value;
+              if (prefix === "other") {
+                handleChange(key, newText); // Treat entire input as the match key
+              } else {
+                handleChange(key, `${prefix}${newText}`);
+              }
             };
             
             return (
@@ -183,24 +189,21 @@ const RequiredParamsDialog = ({
                 <Box sx={{display: "flex", gap: 1, alignItems: "center", pt: 3}}>
                   <Select
                     labelId={`${key}-label`}
-                    // The Select's value is now just the prefix part.
                     value={prefix}
-                    // Use the custom handler.
                     onChange={handlePrefixChange}
                     sx={{width: "40%"}}
                   >
                     {param.options &&
                       param.options.map((option) => (
                         <MenuItem key={option} value={option}>
-                          {option}
+                          {option === "other" ? "Other" : option}
                         </MenuItem>
                       ))}
                   </Select>
                   <TextField
-                    // The TextField's value is now just the number part.
                     value={number}
-                    // Use the custom handler.
                     onChange={handleNumberChange}
+                    placeholder={prefix === "other" ? "Custom key..." : "#"}
                     helperText={param.helperText || ""}
                     sx={{width: "60%"}}
                   />
@@ -208,6 +211,7 @@ const RequiredParamsDialog = ({
               </FormControl>
             );
           }
+
           // Default to text field.
           return (
             <TextField
