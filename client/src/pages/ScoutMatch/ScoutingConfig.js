@@ -72,7 +72,7 @@ export const SCOUTING_CONFIG = {
   //feed
   FEED: {
     phases: [PHASES.AUTO, PHASES.TELE],
-    positions: {[GAME_LOCATIONS.ALLIANCE_ZONE]: [1030, 1200]},
+    positions: {[GAME_LOCATIONS.ALLIANCE_ZONE]: [1030, 1200], [GAME_LOCATIONS.OPPONENT_ALLIANCE_ZONE]: [2500, 1200]},
     dimensions: { width: 250, height: 600 },
     onClick: (match, key, currentTime) => match.setActiveCycle({
       type: CYCLE_TYPES.FEED,

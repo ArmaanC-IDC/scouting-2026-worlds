@@ -317,7 +317,7 @@ const Overlay = ({match}) => {
                   }}
                 >
                   <Typography variant="h4" sx={{ textAlign: "center", fontWeight: "bold" }}>
-                    {contentConfig.label}: {currentVal}
+                    {contentConfig.label}: {currentVal==0 ? "-" : currentVal}
                   </Typography>
                   
                   <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", justifyContent: "center", width: "100%" }}>

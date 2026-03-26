@@ -35,20 +35,34 @@ export const calculatedMetrics = {
             const result = (timeVal / 1000) * averages.avgShotRate;
             return Number.isFinite(result) ? result.toFixed(0) : "-";
         },
+
+        totalFeedCount: (averages, phase) => {
+            const normalizedPhase = phase.toLowerCase();
+            const phaseData = averages[normalizedPhase];
+            if (!phaseData || !phaseData.fuel) return "-";
+
+            const fuelMetrics = phaseData.fuel;
+
+            const timeVal = getValue(fuelMetrics.feedingTime);
+            if (timeVal === null || !averages.avgShotRate) return "-";
+
+            const result = (timeVal / 1000) * averages.avgShotRate;
+            return Number.isFinite(result + fuelMetrics.feedCount) ? (result + fuelMetrics.feedCount).toFixed(0) : "-";
+        }
     }
 };
 
 //what metrics are shown in summaries
 export const importantMetrics = {
     auto: {
-        fuel: ["shotCount", "shootingTime", "bypassingTime"],
+        fuel: ["shotCount", "totalFeedCount", "shootingTime"],
         hang: ["attempts", "cycleTime", "lOneRate"],
         movement: ["bumps", "movements", "trenches"],
         contact: ["foulCount", "pinCount", "totalTime"],
         defense: ["totalTime"],
     },
     tele: {
-        fuel: ["shotCount", "shootingTime", "bypassingTime"],
+        fuel: ["shotCount", "totalFeedCount", "shootingTime"],
         hang: ["attempts", "cycleTime", "lOneRate", "lTwoRate", "lThreeRate"],
         movement: ["bumps", "trenches"],
         contact: ["foulCount", "pinCount", "totalTime"],
@@ -59,12 +73,12 @@ export const importantMetrics = {
 //what metrics are visible (for individual reports)
 export const visibleMetrics = {
     auto: {
-        fuel: ["shotCount", "shootingTime", "bypassingTime", "intakingTime", ],
+        fuel: ["shotCount", "totalFeedCount", "shootingTime", "feedingTime", "feedCount", ],
         hang: ["attempts", "cycleTime", "avgHangPoints", "lOneRate"],
         movement: ["bumps", "trenches"],
     },
     tele: {
-        fuel: ["shotCount", "shootingTime", "bypassingTime", "intakingTime"],
+        fuel: ["shotCount", "totalFeedCount", "shootingTime", "feedingTime", "feedCount", ],
         hang: ["attempts", "cycleTime", "lOneRate", "lTwoRate", "lThreeRate"],
         contact: ["foulCount", "pinCount", "totalTime"],
         movement: ["bumps", "trenches"],
