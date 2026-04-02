@@ -72,18 +72,60 @@ export const SCOUTING_CONFIG = {
   //feed
   FEED: {
     phases: [PHASES.AUTO, PHASES.TELE],
-    positions: {[GAME_LOCATIONS.ALLIANCE_ZONE]: [1030, 1200], [GAME_LOCATIONS.OPPONENT_ALLIANCE_ZONE]: [2500, 1200]},
-    dimensions: { width: 250, height: 600 },
+    positions: {[GAME_LOCATIONS.ALLIANCE_ZONE]: [1030, 1050], [GAME_LOCATIONS.OPPONENT_ALLIANCE_ZONE]: [2500, 1050]},
+    dimensions: { width: 250, height: 300 },
+    onClick: (match, key, currentTime) => {
+      match.setActiveCycle({
+        type: CYCLE_TYPES.FEED,
+        phase: match.phase,
+        startTime: currentTime,
+        location: key,
+        endTime: null,
+        count: null,
+      });
+    },
+    onClickEnd: (match, key, currentTime) => {
+      match.setActiveCycle({
+        ...match.activeCycle,
+        endTime: currentTime,
+      }, "Feeding Cycle")
+    },
+    onClickCancel: (match, key, currentTime) => {
+      match.setActiveCycle({
+        type: null,
+        phase: null,
+        startTime: null,
+        endTime: null,
+        location: null,
+      });
+    },
+
+    textFunction: () => "Feed",
+    color: COLORS.FEED,
+    showFunction: () => true,
+    isSelected: (match, key) => match.activeCycle.type===CYCLE_TYPES.FEED && 
+      match.activeCycle.location===key && 
+      !match.activeCycle.isPush
+  },
+
+  //push balls
+  PUSH: {
+    phases: [PHASES.AUTO, PHASES.TELE],
+    positions: {[GAME_LOCATIONS.ALLIANCE_ZONE]: [1030, 1350], [GAME_LOCATIONS.OPPONENT_ALLIANCE_ZONE]: [2500, 1350]},
+    dimensions: { width: 250, height: 300 },
     onClick: (match, key, currentTime) => match.setActiveCycle({
       type: CYCLE_TYPES.FEED,
       startTime: currentTime,
       phase: match.phase,
       location: key,
+      isPush: true,
     }),
-    textFunction: () => "Feed",
+    textFunction: () => "Push",
     color: COLORS.FEED,
     showFunction: () => true,
-    isSelected: (match, key) => match.activeCycle.type===CYCLE_TYPES.FEED && match.activeCycle.location===key
+    isSelected: (match, key) => match.activeCycle.type===CYCLE_TYPES.FEED && 
+      match.activeCycle.location===key &&
+      match.activeCycle.isPush
   },
 
   HUB: {
@@ -184,42 +226,6 @@ export const SCOUTING_CONFIG = {
       // return false;
     },
   },
-
-  // DEFENSE_STEAL: {
-  //   phases: [PHASES.TELE],
-  //   // New interaction
-  //   positions: { STEAL: [2800, 500] },
-  //   dimensions: { width: 800, height: 400 },
-  //   showFunction: (match, key) => match.isDefending(),
-  //   textFunction: (match, key) => "STEAL",
-  //   color: COLORS.INTAKE,
-  //   fontSize: 70,
-  //   onClick: (match, key, currentTime) => {
-  //     match.setActiveCycle({
-  //       type: CYCLE_TYPES.INTAKE,
-  //       phase: match.phase,
-  //       location: GAME_LOCATIONS.OPPONENT_ALLIANCE_ZONE,
-  //       startTime: currentTime
-  //     }, `Start Intake (Steal) Cycle`);
-  //   },
-  //   isSelected: (match, key) =>
-  //     match.activeCycle?.type === CYCLE_TYPES.INTAKE && match.activeCycle?.location === GAME_LOCATIONS.OPPONENT_ALLIANCE_ZONE,
-  // },
-
-  // DEFENSE_CONTACT: {
-  //   phases: [PHASES.TELE],
-  //   positions: { CONTACT: [2800, 1200] }, // Replaces BYPASS position
-  //   dimensions: { width: 800, height: 400 },
-  //   showFunction: (match, key) => match.isDefending(),
-  //   textFunction: (match, key) => "CONTACT",
-  //   color: COLORS.HANG_DEFENSE,
-  //   fontSize: 90,
-  //   onClick: (match, key, currentTime) => {
-  //     startNewCycle(match, CYCLE_TYPES.CONTACT, currentTime);
-  //   },
-  //   isSelected: (match, key) =>
-  //     match.activeCycle?.type === CYCLE_TYPES.CONTACT,
-  // },
 };
 
 export const ENDGAME_CONFIG = [
@@ -273,31 +279,6 @@ export const ENDGAME_CONFIG = [
     }
   },
 
-  // --------------------
-  // ACCURACY
-  // --------------------
-  // {
-  //   id: "accuracy",
-  //   type: "TOGGLE",
-  //   label: "Accuracy",
-
-  //   fieldX: 650,
-  //   fieldY: 950,
-  //   width: 1200,
-  //   height: 200,
-
-  //   options: ["Low", "Med", "High", ],
-  //   values: ["Low", "Med", "High", ],
-
-  //   labelParams: {
-  //     height: 150
-  //   },
-
-  //   rowParams: {
-  //     gap: 5
-  //   }
-  // },
-
   // // ---------------------
   // // DISABLED STATUS
   // // ---------------------
@@ -319,7 +300,7 @@ export const ENDGAME_CONFIG = [
     },
 
     rowParams: {
-      gap: 5
+      gap: 10
     }
   },
 
@@ -345,6 +326,28 @@ export const ENDGAME_CONFIG = [
 
     rowParams: {
       gap: 2
+    }
+  },
+
+  {
+    id: "feedRate",
+    type: "TOGGLE",
+    label: "Feed Rate",
+
+    fieldX: 1275,
+    fieldY: 950,
+    width: 2400,
+    height: 200,
+
+    options: ["N/A", "20%", "40%", "60%", "80%", "90%", "100%"],
+    values: [0, 0.2, 0.4, 0.6, 0.8, 0.9, 1],
+
+    labelParams: {
+      height: 150
+    },
+
+    rowParams: {
+      gap: 5
     }
   },
 

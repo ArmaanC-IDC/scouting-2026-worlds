@@ -24,15 +24,16 @@ export const storeReportInternal = async (eventKey, report) => {
         scout_id INT,
         scout_name TEXT,
         robot TEXT,
-        station TEXT
+        station TEXT,
+        feed_rate FLOAT
       );
     `;
     await client.query(createTableQuery);
 
     const insertQuery = `
       INSERT INTO ${tableName} 
-        (id, event_key, match_key, match_start_time, submission_time, roles, comments, disabled, driver_skill, defense_skill, accuracy, scout_id, scout_name, robot, station)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        (id, event_key, match_key, match_start_time, submission_time, roles, comments, disabled, driver_skill, defense_skill, accuracy, scout_id, scout_name, robot, station, feed_rate)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       ON CONFLICT (id) DO UPDATE SET
         roles = EXCLUDED.roles,
         comments = EXCLUDED.comments,
@@ -54,6 +55,7 @@ export const storeReportInternal = async (eventKey, report) => {
       driverSkill = null,
       defenseSkill = null,
       accuracy = 0,
+      feedRate = 0,
     } = report.endgame || {};
 
     const values = [
@@ -72,6 +74,7 @@ export const storeReportInternal = async (eventKey, report) => {
       report.scoutName,
       report.robot,
       report.station,
+      feedRate
     ];
     const result = await client.query(insertQuery, values);
     return result.rows[0];

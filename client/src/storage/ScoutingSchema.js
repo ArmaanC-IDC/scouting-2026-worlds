@@ -15,7 +15,8 @@ export const DTO_MAPS = {
   phases: ["NONE", ...Object.keys(PHASES)],
   roles: ["NONE", ...Object.values(ENDGAME_ROLES)],
   disabled: ["No", "Yes"],
-  matchTypes: ["qm", "sf", "f", "p"]
+  matchTypes: ["qm", "sf", "f", "p"],
+  feedRate: [0, 0.2, 0.4, 0.6, 0.8, 0.9, 1]
 };
 
 export const MATCH_SCHEMA = [
@@ -35,6 +36,7 @@ export const MATCH_SCHEMA = [
   { key: "driverSkill", type: "uint8" },
   { key: "defenseSkill", type: "uint8" },
   { key: "roles", type: "array", itemSchema: [{ type: "uint8", map: DTO_MAPS.roles }] },
+  { key: "feedRate", type: "uint8", map: DTO_MAPS.feedRate },
 
   {
     key: "cycles",
@@ -103,6 +105,7 @@ export const prepareMatchForDTO = (matchState) => {
     shotRate: s.endgame?.shotRate || 0,
     snowballRate: s.endgame?.snowballRate || 0,
     roles: s.endgame?.roles || [],
+    feedRate: s.endgame?.feedRate || 0,
 
     cycles: s.cycles.filter(c => c.type && c.startTime !== undefined).map(c => {
       // In prepareMatchForDTO

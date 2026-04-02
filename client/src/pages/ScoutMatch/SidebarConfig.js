@@ -256,7 +256,7 @@ export const OVERLAY_CONFIG = [
   {
     phases: [PHASES.AUTO, PHASES.TELE],
     // Defensive check just in case!
-    showFunction: (match) => !!match.activeCycle.type && match.activeCycle.type === CYCLE_TYPES.FEED,
+    showFunction: (match) => !!match.activeCycle.type && match.activeCycle.type === CYCLE_TYPES.FEED && match.activeCycle.isPush  ,
     title: "FEEDING (Push)",
     handleDone: (content, match, currentTime) => {
       // If they didn't click anything, it defaults to 0
@@ -265,7 +265,8 @@ export const OVERLAY_CONFIG = [
       match.setActiveCycle({
         ...match.activeCycle,
         count: count,
-        endTime: currentTime 
+        endTime: currentTime,
+        isPush: null,
       }, `Feed Cycle (${count} balls)`);
     },
     handleClose: (match) => {
@@ -274,7 +275,8 @@ export const OVERLAY_CONFIG = [
         startTime: null,
         phase: null,
         type: null,
-        count: null
+        count: null,
+        isPush: null,
       });
     },
     content: (match) => [
