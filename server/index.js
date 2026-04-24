@@ -8,7 +8,7 @@ import cors from "cors";
 
 import authRoutes from "./routes/auth.js";
 import apiRoutes from "./routes/api.js";
-import webhookRoutes from "./routes/webhook.js";
+// import webhookRoutes from "./routes/webhook.js";
 import reportsRoutes from "./routes/reports.js";
 import adminRoutes from "./routes/admin.js";
 
@@ -33,7 +33,7 @@ app.use(cors({
       callback(new Error("Not allowed by CORS"));
     }
   },
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma'],
   credentials: true
 }));
 
@@ -74,7 +74,7 @@ app.use("/api/reports", reportsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api", apiRoutes);
 app.use("/auth", authRoutes);
-app.use("/webhook", webhookRoutes);
+// app.use("/webhook", webhookRoutes);
 
 // Have Node serve the files for our built React app
 // app.use(express.static(path.resolve(__dirname, "../client/build")));

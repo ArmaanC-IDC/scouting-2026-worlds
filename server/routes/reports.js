@@ -1,15 +1,10 @@
 // reports.js
 import express from "express";
 import {
-  getReportsAndCyclesFiltered,
-  storeReportAndCycles,
-} from "../database/matchReportHelper.js";
-import { calculateAverageMetrics } from "../metrics/reports.js";
-import { getMatchDataInternal } from "../database/matches.js";
-// Import the new pit scouting query function:
-// import { getPitScoutingByRobotInternal } from "../database/pit_scouting.js";
+  getReports,
+  storeReport
+} from "../database/reports.js";
 import { verifyToken } from "./auth.js";
-import { getTeams } from "../database/team.js";
 
 const router = express.Router();
 
@@ -32,89 +27,51 @@ router.get("/", verifyToken, async (req, res) => {
   }
   try {
     // Get filtered reports (this may already filter by robot/matchKey)
-    const reports = await getReportsAndCyclesFiltered(
+    const reports = await getReports(
       req,
       eventKey,
       matchKey,
       robot
     );
-    
-    if (reports.length===0) {
+
+    if (reports.length === 0) {
       return res.status(204).json({ data: [] });
     }
 
     // Group reports by robot
     const reportsByRobot = {};
     reports.forEach((report) => {
-      const robotId = report.robot; // assuming the report object has a "robot" field
+      const robotId = report.team_number; // assuming the report object has a "robot" field
       if (!reportsByRobot[robotId]) {
         reportsByRobot[robotId] = [];
       }
       reportsByRobot[robotId].push(report);
     });
 
-    // Calculate averages for each robot group
-    const teamsData = await getTeams(req, eventKey, Object.keys(reportsByRobot));
-
-    let averages = {};
-    Object.keys(reportsByRobot).forEach((robotId) => {
-      averages[robotId] = calculateAverageMetrics(reportsByRobot[robotId]);
-      const teamObj = teamsData.rows.find(el => el.team_number==robotId);
-      averages[robotId].teamName = teamObj?.team_name || null;
-      averages[robotId].avgShotRate = teamObj?.avg_shot_rate || null;
-    });
-    if (matchKey) {
-      // Retrieve the match data using our existing internal function.
-      const matchData = await getMatchDataInternal(eventKey, matchKey);
-      if (!matchData) {
-        throw new Error("Match not found");
-      }
-      const robotStations = {
-        [matchData.r1]: "r1",
-        [matchData.r2]: "r2",
-        [matchData.r3]: "r3",
-        [matchData.b1]: "b1",
-        [matchData.b2]: "b2",
-        [matchData.b3]: "b3",
-      };
-      Object.keys(robotStations).forEach((robotKey) => {
-        if (averages[robotKey]) {
-          averages[robotKey].matchStation = robotStations[robotKey];
-        }
-      });
-    }
-
-    // If a robot is provided, get its pit scouting data.
-    // let pitScouting = null;
-    // if (robot) {
-    //   pitScouting = await getPitScoutingByRobotInternal(eventKey, robot);
-    // }
-
-    res.json({ averages, reports });
+    res.json({ reports });
   } catch (error) {
-    console.error("Error fetching filtered reports with cycles:", error);
+    console.error("Error fetching filtered reports:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
 
 // New route to submit a match, storing both report and cycles
 router.post("/submit", verifyToken, async (req, res) => {
-  const { eventKey, matchKey, station, matchData } = req.body;
+  const { eventKey, matchNumber, teamNumber, scoutName, driverSkill, defenseSkill, comments } = req.body;
 
   // Validate required parameters
-  if (!eventKey || !matchKey || !station || !matchData || !matchData.reportId) {
+  if (!eventKey || !matchNumber || !teamNumber || !scoutName || !driverSkill || !defenseSkill || !comments) {
     return res
       .status(400)
-      .json({ message: "Missing required parameters or reportId" });
+      .json({ message: "Missing required parameters" });
   }
 
   try {
     // Store report and cycles in sequence.
-    await storeReportAndCycles(req, eventKey, matchKey, matchData, station);
+    await storeReport(req, { eventKey, matchNumber, teamNumber, scoutName, driverSkill, defenseSkill, comments });
 
-    res.json({
+    res.status(200).json({
       message: "Match submitted successfully",
-      reportId: matchData.reportId,
     });
   } catch (error) {
     console.error("Error submitting match:", error);

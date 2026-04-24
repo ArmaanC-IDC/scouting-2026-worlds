@@ -5,7 +5,8 @@ import { useNavigate } from "react-router-dom";
 import {
   AppBar, Toolbar, Typography, Container, Box, Button, Grid, Card,
   CardActionArea, CardContent, IconButton, Menu, MenuItem, Accordion,
-  AccordionSummary, AccordionDetails, createTheme, ThemeProvider, CssBaseline
+  AccordionSummary, AccordionDetails, createTheme, ThemeProvider, CssBaseline,
+  TextField // <-- Added TextField to imports
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import AccountCircle from "@mui/icons-material/AccountCircle";
@@ -18,8 +19,8 @@ import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 
 // Import your components and assets
-import UpdatePassword from "./UpdatePassword"; // Adjust path if needed
-import altf4Logo from "../../assets/scouting-2025/altf4_logo_white.png"; // Adjust path if needed
+import UpdatePassword from "./UpdatePassword";
+import altf4Logo from "../../assets/scouting-2025/altf4_logo_white.png";
 
 // --- THEME DEFINITION ---
 const darkTheme = createTheme({
@@ -47,7 +48,7 @@ const darkTheme = createTheme({
 // --- STYLED COMPONENTS ---
 const HomeContainer = styled("div")({
   minHeight: "100vh",
-  paddingTop: "80px", // Increased padding for AppBar
+  paddingTop: "80px",
   paddingBottom: "40px",
   display: "flex",
   flexDirection: "column",
@@ -82,20 +83,19 @@ const NavCard = styled(Card)(({ theme }) => ({
 }));
 
 const AdminAccordion = styled(Accordion)(({ theme }) => ({
-  backgroundColor: '#424242', // Lighter grey for admin dashboard
+  backgroundColor: '#424242',
   color: "#fff",
   width: '100%',
   marginTop: '40px'
 }));
 
 const LogoImage = styled('img')({
-    height: '45px',
-    marginRight: '16px',
+  height: '45px',
+  marginRight: '16px',
 });
 
-
 // --- HOME PAGE COMPONENT ---
-const HomePage = () => {
+const HomePage = ({ eventKey, setEventKey }) => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const [updatePasswordOpen, setUpdatePasswordOpen] = useState(false);
@@ -118,6 +118,22 @@ const HomePage = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             ALT-F4 Scouting
           </Typography>
+          {/* --- NEW EVENT KEY SELECTOR --- */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 1 }}>
+            <TextField
+              label="Active Event Key"
+              variant="outlined"
+              value={eventKey || ""} // Fallback to avoid uncontrolled input errors
+              onChange={(e) => setEventKey(e.target.value)}
+              placeholder="e.g., 2026oncmp2"
+              sx={{
+                width: '150px',
+                bgcolor: 'background.paper',
+                borderRadius: 1,
+                input: { color: '#d32f2f', fontWeight: 'bold', textAlign: 'center' } // Styled to pop
+              }}
+            />
+          </Box>
           <div>
             <IconButton size="large" onClick={handleMenu} color="inherit">
               <AccountCircle />
@@ -131,7 +147,7 @@ const HomePage = () => {
               <MenuItem onClick={() => {
                 localStorage.setItem("token", "");
                 navigate("/signIn");
-                }}>Log Out</MenuItem>
+              }}>Log Out</MenuItem>
             </Menu>
           </div>
         </Toolbar>
@@ -143,55 +159,28 @@ const HomePage = () => {
             <Typography variant="h2" component="h1" gutterBottom color="white">
               Scouting App
             </Typography>
+
             <ScoutMatchButton onClick={() => navigate("/scoutMatch")}>
               Scout Match
             </ScoutMatchButton>
           </Box>
 
-          <Grid container spacing={4}>
-            {/* Navigation Cards */}
-            {[
-              { label: 'Overview', icon: <AssessmentIcon sx={{ fontSize: 60 }} />, path: '/categorysort' },
-              { label: 'Matches', icon: <EventIcon sx={{ fontSize: 60 }} />, path: '/matches' },
-              { label: 'Robots', icon: <SmartToyIcon sx={{ fontSize: 60 }} />, path: '/robots' },
-            ].map((item) => (
-              <Grid item xs={12} sm={4} key={item.label}>
-                <NavCard onClick={() => navigate(item.path)}>
-                  <CardActionArea sx={{ p: 3 }}>
-                    {item.icon}
-                    <CardContent>
-                      <Typography gutterBottom variant="h5" component="div">
-                        {item.label}
-                      </Typography>
-                    </CardContent>
-                  </CardActionArea>
-                </NavCard>
-              </Grid>
-            ))}
-          </Grid>
+          {/* Navigation Cards */}
+          <NavCard onClick={() => navigate("/strategy")}>
+            <CardActionArea sx={{ p: 3 }}>
+              <AssessmentIcon sx={{ fontSize: 60 }} />
+              <CardContent>
+                <Typography gutterBottom variant="h5" component="div">
+                  Strategy
+                </Typography>
+              </CardContent>
+            </CardActionArea>
+          </NavCard>
 
-          <AdminAccordion defaultExpanded>
-            <AccordionSummary expandIcon={<ExpandMoreIcon sx={{color: "#fff"}}/>}>
-              <Typography sx={{fontWeight: 'bold'}}>Admin Dashboard</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={4}>
-                  <Button variant="contained" fullWidth startIcon={<AdminPanelSettingsIcon />} onClick={() => navigate("/admin")}>Admin</Button>
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Button variant="contained" fullWidth startIcon={<QrCodeScannerIcon />} onClick={() => navigate("/scan")}>Scan QR</Button>
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Button variant="contained" fullWidth startIcon={<LeaderboardIcon />} onClick={() => navigate("/scoutRankings")}>Scout Rankings</Button>
-                </Grid>
-              </Grid>
-            </AccordionDetails>
-          </AdminAccordion>
+          <Button variant="contained" fullWidth style={{ marginTop: "20px" }} startIcon={<QrCodeScannerIcon />} onClick={() => navigate("/scan")}>Scan QR</Button>
         </Container>
       </HomeContainer>
 
-      {/* Render the UpdatePassword Modal */}
       <UpdatePassword open={updatePasswordOpen} onClose={handleCloseUpdatePassword} />
     </ThemeProvider>
   );

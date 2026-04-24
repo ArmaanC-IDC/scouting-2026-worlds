@@ -8,18 +8,15 @@ import CssBaseline from "@mui/material/CssBaseline";
 
 import HomePage from "./pages/Home/HomePage.js";
 import SignInPage from "./pages/SignInPage.js";
-import ScoutMatch from "./pages/ScoutMatch/ScoutMatch.js";
+import SubmitReport from "./pages/ScoutMatch/SubmitReport.jsx";
 import AdminPage from "./pages/Admin/Admin.js";
 import { ProtectedRoute } from "./TokenUtils.js";
-import MatchStrategy from "./pages/Strategy/MatchStrategy.js";
-import ViewReports from "./pages/Strategy/ViewReports.js";
-import Overview from "./pages/Strategy/Overview.js";
 import ScoutRankings from "./pages/Admin/ScoutRankings.js";
-import CategorySort from "./pages/Strategy/CategorySort.js";
-import AutoPathVisualizer from "./pages/Strategy/AutoPaths.js";
 import ScanQR from "./pages/ScanQR.js";
+import Strategy from "./pages/Strategy/Strategy.js";
 
 function App() {
+  const [eventKey, setEventKey] = React.useState("2026oncmp2");
   return (
     <React.Fragment>
       <ThemeProvider theme={lightTheme}>
@@ -30,37 +27,21 @@ function App() {
             path="/"
             element={
               <ProtectedRoute>
-                <HomePage />
+                <HomePage eventKey={eventKey} setEventKey={setEventKey} />
               </ProtectedRoute>
             }
           />
           <Route
             path="/scoutMatch"
             element={
-              <ScoutMatch key={window.search} />
+              <SubmitReport key={window.search} eventKey={eventKey} setEventKey={setEventKey} />
             }
           />
           <Route
-            path="/matchStrategy"
+            path="/strategy"
             element={
               <ProtectedRoute>
-                <MatchStrategy />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/robots"
-            element={
-              <ProtectedRoute>
-                <ViewReports requiredParamKeys={["eventKey", "robot"]} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/matches"
-            element={
-              <ProtectedRoute>
-                <ViewReports requiredParamKeys={["eventKey", "matchKey"]} />
+                <Strategy eventKey={eventKey} setEventKey={setEventKey} />
               </ProtectedRoute>
             }
           />
@@ -75,34 +56,10 @@ function App() {
           />
 
           <Route
-            path="/overview"
-            element={
-              <ProtectedRoute>
-                <Overview />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/categorySort"
-            element={
-              <ProtectedRoute>
-                <CategorySort />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/admin"
             element={
               <ProtectedRoute>
                 <AdminPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/autoPaths"
-            element={
-              <ProtectedRoute>
-                <AutoPathVisualizer />
               </ProtectedRoute>
             }
           />

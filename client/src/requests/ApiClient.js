@@ -38,7 +38,7 @@ class ApiClient {
         }
 
         if (!error.response) {
-          alert("No internet connection or server is unreachable.");
+          console.error("RAW AXIOS ERROR:", error, error.message, error.toJSON ? error.toJSON() : "");
           return Promise.reject(
             new Error("No connection. Please check your internet.")
           );

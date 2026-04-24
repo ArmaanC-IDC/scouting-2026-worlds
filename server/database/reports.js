@@ -1,81 +1,43 @@
 // server/database/reports.js
 import { USER_ROLES } from "./auth.js";
-import { getMatchDataInternal } from "./matches.js";
 import { pgClient, protectOperation } from "./PgClient.js";
 
-export const storeReportInternal = async (eventKey, report) => {
-  const tableName = `reports_${eventKey}`;
+export const storeReportInternal = async (report) => {
   const client = await pgClient();
   try {
     // Updated table schema with unpacked endgame fields.
     const createTableQuery = `
-      CREATE TABLE IF NOT EXISTS ${tableName} (
-        id TEXT PRIMARY KEY,
+      CREATE TABLE IF NOT EXISTS scout_reports (
+        id TEXT,
+        team_number INT,
         event_key TEXT,
-        match_key TEXT,
-        match_start_time BIGINT,
-        submission_time BIGINT,
-        roles TEXT,
-        comments TEXT,
-        disabled TEXT,
+        scout_name TEXT,
         driver_skill TEXT,
         defense_skill TEXT,
-        accuracy TEXT,
-        scout_id INT,
-        scout_name TEXT,
-        robot TEXT,
-        station TEXT,
-        feed_rate FLOAT
+        comments TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        match_number INT
       );
     `;
     await client.query(createTableQuery);
 
     const insertQuery = `
-      INSERT INTO ${tableName} 
-        (id, event_key, match_key, match_start_time, submission_time, roles, comments, disabled, driver_skill, defense_skill, accuracy, scout_id, scout_name, robot, station, feed_rate)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-      ON CONFLICT (id) DO UPDATE SET
-        roles = EXCLUDED.roles,
-        comments = EXCLUDED.comments,
-        disabled = EXCLUDED.disabled,
-        driver_skill = EXCLUDED.driver_skill,
-        defense_skill = EXCLUDED.defense_skill,
-        scout_id = EXCLUDED.scout_id,
-        scout_name = EXCLUDED.scout_name,
-        submission_time = EXCLUDED.submission_time
-        RETURNING *;
+      INSERT INTO scout_reports 
+        (id, team_number, event_key, scout_name, driver_skill, defense_skill, comments, match_number)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `;
-    const submissionTime = Date.now();
-
-    // Unpack the endgame fields with defaults if not present.
-    const {
-      roles = {},
-      comments = null,
-      disabled = "No",
-      driverSkill = null,
-      defenseSkill = null,
-      accuracy = 0,
-      feedRate = 0,
-    } = report.endgame || {};
 
     const values = [
-      report.reportId,
-      eventKey,
-      report.matchKey,
-      report.matchStartTime,
-      submissionTime,
-      JSON.stringify(roles),
-      comments,
-      disabled,
-      driverSkill,
-      defenseSkill,
-      accuracy,
-      report.scoutId,
+      `report_${report.eventKey}_${report.teamNumber}_${report.matchNumber}_${report.scoutName}_${report.driverSkill}_${report.defenseSkill}_${report.comments}`,
+      report.teamNumber,
+      report.eventKey,
       report.scoutName,
-      report.robot,
-      report.station,
-      feedRate
+      report.driverSkill,
+      report.defenseSkill,
+      report.comments,
+      report.matchNumber,
     ];
+
     const result = await client.query(insertQuery, values);
     return result.rows[0];
   } finally {
@@ -83,108 +45,32 @@ export const storeReportInternal = async (eventKey, report) => {
   }
 };
 
-export const getReportInternal = async (eventKey, matchKey, robot) => {
-  const tableName = `reports_${eventKey}`;
+export const getReportsInternal = async (eventKey, matchNumber, teamNumber) => {
+  const tableName = `scout_reports`;
   const client = await pgClient();
   try {
-    const query = `
+    let query = `
       SELECT *
       FROM ${tableName}
-      WHERE match_key = $1 AND robot = $2
+      WHERE event_key = $1
     `;
-    const result = await client.query(query, [matchKey, robot]);
-    return result.rows;
-  } finally {
-    await client.release();
-  }
-};
-export const getMatchPreviousReportsInternal = async (eventKey, matchKey) => {
-  // Validate eventKey to avoid SQL injection issues.
-  if (!/^[a-zA-Z0-9_]+$/.test(eventKey)) {
-    throw new Error("Invalid eventKey");
-  }
-  // Retrieve the match data using our existing internal function.
-  const matchData = await getMatchDataInternal(eventKey, matchKey);
-  if (!matchData) {
-    throw new Error("Match or robot not found");
-  }
-  // Extract team keys from the match data.
-  const teams = [
-    matchData.r1,
-    matchData.r2,
-    matchData.r3,
-    matchData.b1,
-    matchData.b2,
-    matchData.b3,
-  ].filter(Boolean); // Remove any null/undefined entries
-  if (teams.length === 0) return [];
-
-  // Assume that reports are stored in a dynamic table named `reports_${eventKey}`.
-  const reportsTable = `reports_${eventKey}`;
-  const client = await pgClient();
-  try {
-    // Build placeholders for the SQL IN clause (e.g., $1, $2, ..., $6)
-    const placeholders = teams.map((_, i) => `$${i + 1}`).join(", ");
-    const query = `
-      SELECT *
-      FROM ${reportsTable}
-      WHERE robot IN (${placeholders})
-    `;
-    const result = await client.query(query, teams);
-    return result.rows;
-  } finally {
-    await client.release();
-  }
-};
-
-export const getReportsFilteredInternal = async (eventKey, matchKey, robot) => {
-  const tableName = `reports_${eventKey}`;
-  const client = await pgClient();
-  try {
-    let conditions = ["event_key = $1"];
     let values = [eventKey];
-    let paramIndex = 2;
-
-    if (matchKey) {
-      conditions.push(`match_key = $${paramIndex}`);
-      values.push(matchKey);
-      paramIndex++;
+    if (matchNumber) {
+      query += ` AND match_number = $2`;
+      values.push(matchNumber);
     }
-    if (robot) {
-      conditions.push(`robot = $${paramIndex}`);
-      values.push(robot);
+    if (teamNumber) {
+      query += ` AND team_number = $${values.length + 1}`;
+      values.push(teamNumber);
     }
-
-    const query = `
-    SELECT *
-    FROM ${tableName}
-    WHERE ${conditions.join(" AND ")}
-    `;
     const result = await client.query(query, values);
-    if (!result.rows || result.rows.length == 0) {
-      try {
-        return await getMatchPreviousReportsInternal(eventKey, matchKey);
-      } catch (error) {
-        console.log("Error getting match reports", error);
-        return [];
-      }
-    }
     return result.rows;
   } finally {
     await client.release();
   }
 };
-// Protect the operation so that only authorized users (e.g., USER role) can access it.
-export const getMatchPreviousReports = protectOperation(
-  getMatchPreviousReportsInternal,
-  [USER_ROLES.USER]
-);
 
-export const getReportsFiltered = protectOperation(getReportsFilteredInternal, [
-  USER_ROLES.USER,
-]);
-
-export const getReport = protectOperation(getReportInternal, [USER_ROLES.USER]);
+export const getReports = protectOperation(getReportsInternal, [USER_ROLES.USER]);
 export const storeReport = protectOperation(storeReportInternal, [
   USER_ROLES.USER,
 ]);

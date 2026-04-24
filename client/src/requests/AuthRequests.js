@@ -12,7 +12,7 @@ const UPDATE_PASSWORD_ROUTE = SERVER_URL + "/updatePassword"; // New API endpoin
 // Function to get the token from localStorage
 export const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
-  return token ? { authorization: token } : {};
+  return token ? { authorization: `Bearer ${token}` } : {};
 };
 
 // Sign-in request

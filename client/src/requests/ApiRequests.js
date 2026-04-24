@@ -21,21 +21,32 @@ export const getScoutMatch = async ({ eventKey, station, matchKey, scoutId }) =>
 
 export const submitMatch = async ({
   eventKey,
-  matchKey,
-  station,
-  matchData,
+  matchNumber,
+  teamNumber,
+  scoutName,
+  driverSkill,
+  defenseSkill,
+  comments,
 }) => {
-  console.log("submitMatch", eventKey, matchKey, station, matchData, getAuthHeaders());
+  console.log("submitMatch", eventKey, matchNumber, teamNumber, scoutName, driverSkill, defenseSkill, comments, getAuthHeaders());
   return api.post(
     `/reports/submit`,
-    { eventKey, matchKey, station, matchData },
+    { eventKey, matchNumber, teamNumber, scoutName, driverSkill, defenseSkill, comments },
     { headers: getAuthHeaders() }
   );
 };
 
-export const getReports = async ({ eventKey, matchKey, robot }) => {
-  return api.get(`/reports/`, {
-    params: { eventKey, matchKey, robot },
-    headers: getAuthHeaders(),
+export const getReports = async ({ eventKey, robot }) => {
+  const params = new URLSearchParams();
+
+  params.append("eventKey", eventKey);
+  if (robot) params.append("robot", robot);
+
+  return api.get(`/reports/?${params.toString()}`, {
+    headers: {
+      ...getAuthHeaders(),
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache"
+    },
   });
 };
