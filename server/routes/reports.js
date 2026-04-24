@@ -50,6 +50,9 @@ router.get("/", verifyToken, async (req, res) => {
 
     res.json({ reports });
   } catch (error) {
+    if (error.message === "DUPLICATE_REPORT") {
+      return res.status(409).json({ error: "this report was already submitted" });
+    }
     console.error("Error fetching filtered reports:", error);
     res.status(500).json({ error: "Server error" });
   }

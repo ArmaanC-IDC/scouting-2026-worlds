@@ -54,6 +54,7 @@ const SubmitReport = ({ eventKey, setEventKey }) => {
             setAlert({ open: true, type: "success", message: "Report submitted successfully!" });
             setFormData(initialFormState);
         } catch (error) {
+            console.log("Error submitting report", error);
             const errorMsg = error?.response?.data?.message || error.message || "Failed to submit report";
             setAlert({ open: true, type: "error", message: errorMsg });
         } finally {
@@ -166,7 +167,7 @@ const SubmitReport = ({ eventKey, setEventKey }) => {
                     <QRGeneratorDialog
                         open={isGeneratorOpen}
                         onClose={() => setIsGeneratorOpen(false)}
-                        data={formData}
+                        data={{ ...formData, eventKey: eventKey }}
                     />
 
                     <Snackbar

@@ -40,6 +40,11 @@ export const storeReportInternal = async (report) => {
 
     const result = await client.query(insertQuery, values);
     return result.rows[0];
+  } catch (error) {
+    if (error.code === '23505') {
+      throw new Error("DUPLICATE_REPORT");
+    }
+    throw error;
   } finally {
     await client.release();
   }

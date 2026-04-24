@@ -5,7 +5,7 @@ import {
     createTheme, ThemeProvider, CssBaseline, Snackbar, Alert, IconButton
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { QrReader } from 'react-qr-reader';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import { submitMatch } from '../requests/ApiRequests';
 
 //update in ScoutMatch/QRGeneratorDialog.jsx as well
@@ -29,7 +29,7 @@ const ScanQR = () => {
     // THE FIX: A mutable ref that updates instantly, bypassing React's async state batching
     const scanLockRef = useRef(false);
 
-    const handleResult = async (result, error) => {
+    const handleScan = async (result) => {
         // If we get a result AND the lock is currently open
         if (result && !scanLockRef.current) {
 
@@ -40,7 +40,7 @@ const ScanQR = () => {
             setIsUIProcessing(true);
 
             try {
-                const parsedData = result?.text.split("|").reduce((acc, val, i) => {
+                const parsedData = result.split("|").reduce((acc, val, i) => {
                     acc[order[i]] = val;
                     return acc;
                 }, {});
@@ -51,7 +51,7 @@ const ScanQR = () => {
                 setAlert({ open: true, type: "success", message: `Successfully synced match ${parsedData.matchNumber} for team ${parsedData.teamNumber}!` });
             } catch (err) {
                 console.error(err);
-                setAlert({ open: true, type: "error", message: "Failed to sync. Ensure QR is valid." });
+                setAlert({ open: true, type: "error", message: err.response.data.error || "Failed to sync. Ensure QR is valid." });
             } finally {
                 // Resume scanning after 3 seconds, regardless of success or failure
                 setTimeout(() => {
@@ -93,10 +93,15 @@ const ScanQR = () => {
                                     <Typography variant="h5" color="success.main" fontWeight="bold">Processing...</Typography>
                                 </Box>
                             )}
-                            <QrReader
-                                onResult={handleResult}
-                                constraints={{ facingMode: 'environment' }}
-                                containerStyle={{ width: '100%' }}
+                            <Scanner
+                                onScan={(detectedCodes) => {
+                                    if (detectedCodes.length > 0) {
+                                        handleScan(detectedCodes[0].rawValue);
+                                    }
+                                }}
+                                onError={(error) => {
+                                    console.error("QR Error:", error);
+                                }}
                             />
                         </Box>
                     </Paper>
